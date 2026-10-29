@@ -15,18 +15,23 @@
     <table class="data-table">
       <thead><tr><th>Employee</th><th>Role</th><th>Status</th><th>Last sign-in</th><th>Joined</th><th></th></tr></thead>
       <tbody>
-        {% for e, role in rows %}
+        {% for e, role, verified in rows %}
           <tr>
             <td>
-              <a href="{% url 'employee-edit' e.pk %}" class="link">{{ e.get_full_name|default:e.username }}</a>
-              <div class="text-xs text-muted-foreground">{{ e.username }}{% if e.email %} · {{ e.email }}{% endif %}</div>
+              <a href="{% url 'employee-edit' e.pk %}" class="link">{{ e.get_full_name|default:e.email|default:e.username }}</a>
+              {% if not e.email %}<div class="text-xs text-amber-700">No email yet: signs in as {{ e.username }}</div>
+              {% elif e.get_full_name %}<div class="text-xs text-muted-foreground">{{ e.email }}</div>{% endif %}
             </td>
             <td>
               {% if role == 'Super Admin' %}<span class="badge bg-primary text-primary-foreground">{{ role }}</span>
               {% elif role %}<span class="badge bg-secondary text-secondary-foreground">{{ role }}</span>
               {% else %}<span class="badge border-amber-200 bg-amber-50 text-amber-700">No role</span>{% endif %}
             </td>
-            <td>{% if e.is_active %}<span class="text-green-600">Active</span>{% else %}<span class="text-muted-foreground">Inactive</span>{% endif %}</td>
+            <td>
+              {% if not e.is_active %}<span class="text-muted-foreground">Inactive</span>
+              {% elif not verified %}<span class="badge border-amber-200 bg-amber-50 text-amber-700">Awaiting verification</span>
+              {% else %}<span class="text-green-600">Active</span>{% endif %}
+            </td>
             <td class="text-muted-foreground">{% if e.last_login %}{{ e.last_login|timesince }} ago{% else %}never{% endif %}</td>
             <td class="text-muted-foreground">{{ e.date_joined|date:"Y-m-d" }}</td>
             <td class="text-right"><a href="{% url 'employee-edit' e.pk %}" class="link text-sm">Edit</a></td>

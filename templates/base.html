@@ -36,10 +36,10 @@
         <form method="post" action="{% url 'logout' %}" class="flex items-center gap-2 md:gap-3">
           {% csrf_token %}
           <span class="hidden text-right md:block">
-            <span class="block text-sm font-medium">{{ user.get_username }}</span>
+            <span class="block text-sm font-medium">{{ user.get_full_name|default:user.get_username }}</span>
             <span class="block text-xs text-white/70">{{ role }}</span>
           </span>
-          <span class="flex size-8 items-center justify-center rounded-full bg-white text-xs font-bold text-secondary-foreground md:size-9">{{ user.get_username|slice:":2"|upper }}</span>
+          <span class="flex size-8 items-center justify-center rounded-full bg-white text-xs font-bold text-secondary-foreground md:size-9">{% if user.first_name and user.last_name %}{{ user.first_name|first|upper }}{{ user.last_name|first|upper }}{% else %}{{ user.get_username|slice:":2"|upper }}{% endif %}</span>
           <button class="flex size-8 cursor-pointer items-center justify-center rounded-full hover:bg-white/10 md:size-9" title="Log Out" aria-label="Log Out">
             <i data-lucide="log-out" class="size-5"></i>
           </button>

@@ -13,7 +13,7 @@ NAV = [
 
 
 # Super Admin only; pinned to the bottom of the sidebar.
-EMPLOYEES = ('employee-list', 'Employees', 'id-card', {'employee-list', 'employee-add', 'employee-edit', 'employee-password'})
+EMPLOYEES = ('employee-list', 'Employees', 'id-card', {'employee-list', 'employee-add', 'employee-edit'})
 
 
 def nav(request):

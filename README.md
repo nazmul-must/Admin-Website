@@ -139,8 +139,8 @@ Requires the local product stack (Oracle on `localhost:1521`) and the `mtr-env` 
 cp .env.example .env          # fill ORACLE_PASSWORD; MASTER_SECRET_KEY is optional
 pip install -r requirements.txt
 python manage.py migrate      # Django's own tables only, in db.sqlite3
-python manage.py createsuperuser
-python manage.py runserver    # http://127.0.0.1:8000/
+python manage.py create_super_admin   # asks for your email and password; no verification
+python manage.py runserver    # http://127.0.0.1:8000/, sign in with that email
 python manage.py test
 ```
 
@@ -148,17 +148,25 @@ python manage.py test
 
 **Employees** are the people who sign in to this admin site. They are not **users**: users are the
 customers of Pro3AI, read from the Identity service and shown under *Users*. Super Admins manage
-employees under *Employees* in the sidebar (`/employees/`). Every employee has exactly one role,
-required when the employee is added. Each role is a
+employees under *Employees* in the sidebar (`/employees/`). Every employee needs an **email**,
+which is how they sign in, and exactly one role. Both are required when the employee is added.
+
+New employees get an email with a one-time link (valid 3 days). Opening it and choosing a password
+verifies the address; until then they can't sign in and the list shows *Awaiting verification*. A
+Super Admin can resend the link from the employee's page, or send a password-reset link once the
+employee is verified. Changing someone else's email makes them verify the new one. Locally the
+console mailer prints emails in the runserver terminal, and in DEBUG the plain link is logged too
+(the email body wraps it). Each role is a
 Django group, created by the `accounts` migration.
 
 | Role | Can | Permissions |
 |---|---|---|
-| Super Admin | Everything, plus add employees and assign their roles | `view_site`, `edit_site`, `manage_employees` + Employee admin |
+| Super Admin | Everything, plus add employees and assign their roles | `view_site`, `edit_site`, `manage_employees` |
 | Manager | View every page; edit, modify and download | `view_site`, `edit_site` |
 | Monitor | View every page, read-only | `view_site` |
 
-`createsuperuser` accounts count as Super Admin too; use one to add the first employees. An employee
+Create the first Super Admin with `create_super_admin` (no email verification); they invite everyone
+else, and those employees verify their email. `createsuperuser` accounts also count as Super Admin. An employee
 with no role can sign in but gets "No permission" on every page. Gate new pages with `@view_required` and new
 write or download actions with `@edit_required` (`accounts/decorators.py`); in templates, use
 `{% if perms.accounts.edit_site %}`.

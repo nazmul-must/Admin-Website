@@ -1,0 +1,21 @@
+{% extends "public.html" %}
+{% block title %}Verify Email · Pro3AI Admin{% endblock %}
+{% block card %}
+  {% if validlink %}
+    <h1 class="mb-4 text-3xl font-bold">Choose a Password</h1>
+    <p class="mb-6 text-center text-sm text-secondary-foreground">
+      This verifies <strong>{{ form.user.email }}</strong>. You'll sign in with this email and password.
+    </p>
+    <form method="post" class="flex w-full flex-col gap-4">
+      {% csrf_token %}
+      {% for field in form %}{% include "_field.html" with field=field only %}{% endfor %}
+      <button type="submit" class="btn btn-primary mt-2 w-full">Verify and Set Password</button>
+    </form>
+  {% else %}
+    <h1 class="mb-4 text-3xl font-bold">Link Expired</h1>
+    <p class="mb-6 text-center text-sm text-secondary-foreground">
+      This link was already used or is too old. Ask a Super Admin to send you a new one.
+    </p>
+    <a href="{% url 'login' %}" class="btn btn-primary w-full">Go to Log In</a>
+  {% endif %}
+{% endblock %}

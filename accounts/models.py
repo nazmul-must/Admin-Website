@@ -60,3 +60,9 @@ def employee_role(employee):
     """The employee's role name. Superusers made with createsuperuser count as Super Admin."""
     role = next((g.name for g in employee.groups.all() if g.name in ROLES), None)
     return role or (SUPER_ADMIN if employee.is_superuser else None)
+
+
+def email_verified(employee):
+    """Verified = the employee opened the emailed link and chose a password (accounts/views.py).
+    Until then their password is unusable, so they cannot sign in."""
+    return employee.has_usable_password()

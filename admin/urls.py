@@ -38,5 +38,6 @@ urlpatterns = [
     path('employees/', accounts.employee_list, name='employee-list'),
     path('employees/new/', accounts.employee_add, name='employee-add'),
     path('employees/<int:pk>/', accounts.employee_edit, name='employee-edit'),
-    path('employees/<int:pk>/password/', accounts.employee_password, name='employee-password'),
+    path('employees/<int:pk>/send-link/', accounts.employee_send_link, name='employee-send-link'),
+    path('employees/verify/<uidb64>/<token>/', accounts.VerifyEmailView.as_view(), name='employee-verify'),
 ]

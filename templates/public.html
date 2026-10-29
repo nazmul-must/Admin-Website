@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% load static %}
+{% block body %}
+  {# Logged-out layout with the mint auth card (design system §6.6). Pages fill `card`. #}
+  <div class="flex min-h-dvh flex-col bg-gray-100">
+    <header class="bg-secondary-foreground px-6 py-4 text-white">
+      <img src="{% static 'images/logo-pro3ai.svg' %}" alt="Pro3AI" class="h-12 object-contain">
+    </header>
+
+    <main class="flex grow items-center justify-center p-4">
+      <div class="flex w-full max-w-md flex-col items-center rounded-lg bg-secondary p-8 shadow-lg">
+        {% for message in messages %}
+          <div class="mb-4 w-full rounded-lg border px-4 py-3 text-sm {% if message.level_tag == 'error' %}border-red-200 bg-red-50 text-red-700{% else %}border-primary/20 bg-background text-secondary-foreground{% endif %}">{{ message }}</div>
+        {% endfor %}
+        {% if form.non_field_errors %}
+          <div class="mb-4 w-full rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            {% for error in form.non_field_errors %}<p>{{ error }}</p>{% endfor %}
+          </div>
+        {% endif %}
+        {% block card %}{% endblock %}
+      </div>
+    </main>
+
+    <footer class="bg-secondary-foreground px-6 py-4 text-sm text-white">
+      © {% now "Y" %} Pro3AI. All rights reserved.
+    </footer>
+  </div>
+{% endblock %}

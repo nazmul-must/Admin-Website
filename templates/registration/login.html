@@ -1,35 +1,12 @@
-{% extends "base.html" %}
-{% load static %}
+{% extends "public.html" %}
 {% block title %}Log In · Pro3AI Admin{% endblock %}
-{% block body %}
-  {# Login for every employee. Design system §6.6. #}
-  <div class="flex min-h-dvh flex-col bg-gray-100">
-    <header class="bg-secondary-foreground px-6 py-4 text-white">
-      <img src="{% static 'images/logo-pro3ai.svg' %}" alt="Pro3AI" class="h-12 object-contain">
-    </header>
-
-    <main class="flex grow items-center justify-center p-4">
-      <div class="flex w-full max-w-md flex-col items-center rounded-lg bg-secondary p-8 shadow-lg">
-        <h1 class="mb-4 text-3xl font-bold">Log In</h1>
-        <p class="mb-6 text-sm text-secondary-foreground">Pro3AI platform administration</p>
-
-        {% if form.non_field_errors %}
-          <div class="mb-4 w-full rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-            {% for error in form.non_field_errors %}<p>{{ error }}</p>{% endfor %}
-          </div>
-        {% endif %}
-
-        <form method="post" class="flex w-full flex-col gap-4">
-          {% csrf_token %}
-          <input type="hidden" name="next" value="{{ next }}">
-          {% for field in form %}{% include "_field.html" with field=field only %}{% endfor %}
-          <button type="submit" class="btn btn-primary mt-2 w-full">Log In</button>
-        </form>
-      </div>
-    </main>
-
-    <footer class="bg-secondary-foreground px-6 py-4 text-sm text-white">
-      © {% now "Y" %} Pro3AI. All rights reserved.
-    </footer>
-  </div>
+{% block card %}
+  <h1 class="mb-4 text-3xl font-bold">Log In</h1>
+  <p class="mb-6 text-sm text-secondary-foreground">Pro3AI platform administration</p>
+  <form method="post" class="flex w-full flex-col gap-4">
+    {% csrf_token %}
+    <input type="hidden" name="next" value="{{ next }}">
+    {% for field in form %}{% include "_field.html" with field=field only %}{% endfor %}
+    <button type="submit" class="btn btn-primary mt-2 w-full">Log In</button>
+  </form>
 {% endblock %}

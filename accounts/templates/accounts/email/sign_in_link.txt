@@ -1,0 +1,10 @@
+{% autoescape off %}Hello {{ employee.get_full_name|default:employee.email }},
+
+{% if verified %}A Super Admin asked to reset your Pro3AI Admin password. Choose a new one here:{% else %}You have been added to Pro3AI Admin. Verify your email and choose a password here:{% endif %}
+
+{{ link }}
+
+The link works once and expires in {{ days }} day{{ days|pluralize }}. You'll sign in with {{ employee.email }}.
+
+If you weren't expecting this, ignore this email.
+{% endautoescape %}
