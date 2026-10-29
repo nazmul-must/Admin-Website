@@ -4,11 +4,11 @@ product adoption and access decisions. Grafana keeps HTTP/GraphQL/outbox health.
 from collections import defaultdict
 from datetime import timedelta
 
-from django.contrib.auth.decorators import login_required
 from django.db.models import Count, Max, Sum
 from django.db.models.functions import TruncDate
 from django.utils import timezone
 
+from accounts.decorators import view_required
 from servicedata.models import (
     AccessDecision,
     AgentSession,
@@ -85,7 +85,7 @@ def _attention(src, names, subs):
     return [{'org_id': i, 'name': n, 'reason': r, 'level': lvl} for i, n, r, lvl in items]
 
 
-@login_required
+@view_required
 def overview(request):
     src = Sources()
     days = window(request, 90)
@@ -137,7 +137,7 @@ def overview(request):
     })
 
 
-@login_required
+@view_required
 def growth(request):
     src = Sources()
     days = window(request, 90)
@@ -198,7 +198,7 @@ def growth(request):
     return src.render(request, 'analytics/growth.html', {'days': days, 'idn': idn, 'charts': charts, 'funnel': funnel})
 
 
-@login_required
+@view_required
 def billing(request):
     src = Sources()
     days = window(request, 90)
@@ -252,7 +252,7 @@ def billing(request):
     })
 
 
-@login_required
+@view_required
 def ai_usage(request):
     src = Sources()
     days = window(request, 30)
@@ -308,7 +308,7 @@ def ai_usage(request):
     return src.render(request, 'analytics/ai_usage.html', {'days': days, 'ai': ai, 'charts': charts, 'top': top})
 
 
-@login_required
+@view_required
 def engagement(request):
     src = Sources()
     days = window(request, 30)
@@ -406,7 +406,7 @@ def engagement(request):
     })
 
 
-@login_required
+@view_required
 def access(request):
     src = Sources()
     days = window(request, 30)

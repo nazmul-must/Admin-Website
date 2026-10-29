@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}No permission · Pro3AI Admin{% endblock %}
+{% block crumbs %}{% endblock %}
+{% block content %}
+  <div class="mx-auto max-w-md space-y-3 py-12 text-center">
+    <i data-lucide="shield-alert" class="mx-auto size-10 text-destructive"></i>
+    <h1 class="text-xl font-semibold">No permission</h1>
+    <p class="text-muted-foreground">
+      {% if role == 'No role' %}Your account has no role yet. Ask a Super Admin to add you to the Super Admin, Manager or Monitor group.
+      {% else %}Your role ({{ role }}) can't open this page.{% endif %}
+    </p>
+  </div>
+{% endblock %}

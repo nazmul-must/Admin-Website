@@ -1,6 +1,6 @@
-from django.contrib.auth.decorators import login_required
 from django.http import Http404
 
+from accounts.decorators import view_required
 from analytics.charts import chart, ranked
 from servicedata.stats import Sources, labels, window
 from servicedata.tiers import CREDITS_PER_USD, tiers
@@ -11,7 +11,7 @@ from .selectors import org_detail, org_rows, subscriptions
 from .user_selectors import user_detail, user_rows
 
 
-@login_required
+@view_required
 def org_list(request):
     src = Sources()
     q = request.GET.get('q', '').strip()
@@ -31,7 +31,7 @@ def org_list(request):
     return src.render(request, template, context)
 
 
-@login_required
+@view_required
 def org_detail_view(request, org_id):
     src = Sources()
     days = window(request, 30)
@@ -59,7 +59,7 @@ def org_detail_view(request, org_id):
     return src.render(request, 'tenants/org_detail.html', {**d, 'charts': charts, 'days': days, 'credits_per_usd': CREDITS_PER_USD})
 
 
-@login_required
+@view_required
 def user_list(request):
     src = Sources()
     filters = {k: request.GET.get(k, '').strip() for k in ('q', 'org', 'verified', 'mfa')}
@@ -71,7 +71,7 @@ def user_list(request):
     return src.render(request, template, context)
 
 
-@login_required
+@view_required
 def user_detail_view(request, user_id):
     src = Sources()
     days = window(request, 30)

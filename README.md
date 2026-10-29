@@ -141,18 +141,38 @@ pip install -r requirements.txt
 python manage.py migrate      # Django's own tables only, in db.sqlite3
 python manage.py createsuperuser
 python manage.py runserver    # http://127.0.0.1:8000/
-python manage.py test servicedata
+python manage.py test
 ```
+
+## Employees and roles
+
+**Employees** are the people who sign in to this admin site. They are not **users**: users are the
+customers of Pro3AI, read from the Identity service and shown under *Users*. Super Admins manage
+employees under *Employees* in the sidebar (`/admin/`). Every employee has exactly one role,
+required when the employee is added. Each role is a
+Django group, created by the `accounts` migration.
+
+| Role | Can | Permissions |
+|---|---|---|
+| Super Admin | Everything, plus add employees and assign their roles | `view_site`, `edit_site`, `manage_employees` + Employee admin |
+| Manager | View every page; edit, modify and download | `view_site`, `edit_site` |
+| Monitor | View every page, read-only | `view_site` |
+
+`createsuperuser` accounts count as Super Admin too; use one to add the first employees. An employee
+with no role can sign in but gets "No permission" on every page. Gate new pages with `@view_required` and new
+write or download actions with `@edit_required` (`accounts/decorators.py`); in templates, use
+`{% if perms.accounts.edit_site %}`.
 
 ## Code layout
 
 | Path | Contents |
 |---|---|
-| `admin/` | Settings, URLs, read-only database router, nav context processor |
+| `admin/` | Settings, URLs, read-only database router, nav and role context processors |
+| `accounts/` | Employees (admin-site accounts) and their roles: permissions, Employee admin, the migration that creates the role groups, view decorators, tests |
 | `servicedata/` | Read-only models over service tables, query helpers (`stats.py`), tier limits, PII decryption, template filters, tests |
 | `tenants/` | Organization and user list/detail pages |
 | `analytics/` | Overview and analytics pages, Chart.js config builder |
-| `templates/` | Base layout and shared partials (KPI card, chart, window picker, user cell) |
+| `templates/` | Base layout, theme, login, 403 page and shared partials (KPI card, chart, window picker, user cell) |
 | `static/js/charts.js` | Renders server-built Chart.js configs, also after HTMX swaps |
 
 Oracle traps for anyone adding models: Django truncates unquoted names over 30 characters

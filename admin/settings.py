@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'accounts',
     'servicedata',
     'tenants',
     'analytics',
@@ -69,6 +70,7 @@ TEMPLATES = [
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
                 'admin.context_processors.nav',
+                'admin.context_processors.role',
             ],
         },
     },
@@ -120,9 +122,11 @@ TIER_CONFIG_PATH = Path(os.environ.get(
 # (servicedata/pii.py); when empty, pages show ciphertext.
 MASTER_SECRET_KEY = os.environ.get('MASTER_SECRET_KEY', '')
 
-LOGIN_URL = 'admin:login'
-# Skip Django admin's own "logged out" page; land back on the styled login screen.
-LOGOUT_REDIRECT_URL = 'admin:login'
+# Roles (Super Admin, Manager, Monitor) live in accounts/models.py. Role members are not
+# Django staff, so everyone signs in through Django's own LoginView.
+LOGIN_URL = 'login'
+LOGIN_REDIRECT_URL = 'overview'
+LOGOUT_REDIRECT_URL = 'login'
 
 
 # Password validation

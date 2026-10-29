@@ -2,7 +2,7 @@
 {% load static %}
 {% block title %}Log In · Pro3AI Admin{% endblock %}
 {% block body %}
-  {# Overrides Django admin's login page with the Pro3AI public layout (design system §6.6). #}
+  {# Login for every role (/login/) and for the Super Admin /admin/ area (admin.site.login_template). Design system §6.6. #}
   <div class="flex min-h-dvh flex-col bg-gray-100">
     <header class="bg-secondary-foreground px-6 py-4 text-white">
       <img src="{% static 'images/logo-pro3ai.svg' %}" alt="Pro3AI" class="h-12 object-contain">
@@ -20,15 +20,13 @@
         {% endif %}
         {% if user.is_authenticated %}
           <div class="mb-4 w-full rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
-            You are logged in as {{ user.get_username }}, but this account can't open this page. Log in with a staff account.
+            You are logged in as {{ user.get_username }}, but only a Super Admin can open this area.
           </div>
         {% endif %}
 
-        <form method="post" action="{{ app_path }}" class="flex w-full flex-col gap-4">
+        <form method="post" action="" class="flex w-full flex-col gap-4">
           {% csrf_token %}
-          {# Django admin defaults `next` to /admin/; land on the overview unless a page asked for a redirect. #}
-          {% url 'overview' as overview_url %}
-          <input type="hidden" name="next" value="{{ request.GET.next|default:overview_url }}">
+          <input type="hidden" name="next" value="{{ next }}">
           <div class="relative">
             <input id="id_username" name="username" type="text" value="{{ form.username.value|default:'' }}" placeholder=" "
                    autocomplete="username" autofocus required

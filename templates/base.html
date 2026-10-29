@@ -33,9 +33,12 @@
         <span class="text-xs font-semibold uppercase tracking-wider text-white/80">Admin</span>
       </a>
       {% if user.is_authenticated %}
-        <form method="post" action="{% url 'admin:logout' %}" class="flex items-center gap-2 md:gap-3">
+        <form method="post" action="{% url 'logout' %}" class="flex items-center gap-2 md:gap-3">
           {% csrf_token %}
-          <span class="hidden text-sm font-medium md:inline">{{ user.get_username }}</span>
+          <span class="hidden text-right md:block">
+            <span class="block text-sm font-medium">{{ user.get_username }}</span>
+            <span class="block text-xs text-white/70">{{ role }}</span>
+          </span>
           <span class="flex size-8 items-center justify-center rounded-full bg-white text-xs font-bold text-secondary-foreground md:size-9">{{ user.get_username|slice:":2"|upper }}</span>
           <button class="flex size-8 cursor-pointer items-center justify-center rounded-full hover:bg-white/10 md:size-9" title="Log Out" aria-label="Log Out">
             <i data-lucide="log-out" class="size-5"></i>
@@ -46,7 +49,7 @@
   </header>
 
   <div class="flex pt-20">
-    {% if user.is_authenticated %}
+    {% if perms.accounts.view_site %}
       <aside class="fixed top-20 left-0 z-30 flex h-[calc(100vh-5rem)] w-50 flex-col border-r border-sidebar-border bg-sidebar shadow-sm">
         <nav class="flex flex-1 flex-col space-y-1.5 overflow-y-auto px-3 py-4">
           {% for name, label, icon, active in nav %}
@@ -59,11 +62,20 @@
             </a>
             {% if forloop.first %}<div class="mx-2 my-2 h-px bg-sidebar-border"></div>{% endif %}
           {% endfor %}
+          {% if perms.accounts.manage_employees %}
+            <div class="mt-auto"></div>
+            <div class="mx-2 my-2 h-px bg-sidebar-border"></div>
+            <a href="{% url 'admin:accounts_employee_changelist' %}"
+               class="group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium leading-tight text-sidebar-foreground transition-all duration-300 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground">
+              <i data-lucide="id-card" class="size-5 shrink-0 text-muted-foreground group-hover:text-sidebar-accent-foreground"></i>
+              <span>Employees</span>
+            </a>
+          {% endif %}
         </nav>
       </aside>
     {% endif %}
 
-    <main class="flex min-w-0 grow flex-col gap-6 px-12 py-8 {% if user.is_authenticated %}ml-50{% endif %}">
+    <main class="flex min-w-0 grow flex-col gap-6 px-12 py-8 {% if perms.accounts.view_site %}ml-50{% endif %}">
       <nav aria-label="Breadcrumb" class="flex items-center text-sm font-medium">
         <ol class="flex items-center space-x-1.5 md:space-x-2">
           <li><a href="{% url 'overview' %}" class="flex rounded-md px-2 py-1 text-muted-foreground hover:bg-accent/50 hover:text-primary" aria-label="Overview"><i data-lucide="house" class="size-3.5"></i></a></li>

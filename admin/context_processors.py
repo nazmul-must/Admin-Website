@@ -1,3 +1,5 @@
+from accounts.models import EDIT_SITE, MANAGE_EMPLOYEES, MANAGER, MONITOR, SUPER_ADMIN, VIEW_SITE
+
 NAV = [
     ('overview', 'Overview', 'layout-dashboard', {'overview'}),
     ('org-list', 'Organizations', 'building-2', {'org-list', 'org-detail'}),
@@ -18,3 +20,19 @@ def nav(request):
         # Breadcrumb label for the current section; detail pages extend it in their template.
         'crumb': next((label for _, label, _, active in items if active), None),
     }
+
+
+def role(request):
+    """Display name of the signed-in user's access level (see accounts/models.py)."""
+    user = getattr(request, 'user', None)
+    if not user or not user.is_authenticated:
+        return {}
+    if user.has_perm(MANAGE_EMPLOYEES):  # also true for Django superusers
+        label = SUPER_ADMIN
+    elif user.has_perm(EDIT_SITE):
+        label = MANAGER
+    elif user.has_perm(VIEW_SITE):
+        label = MONITOR
+    else:
+        label = 'No role'
+    return {'role': label}
