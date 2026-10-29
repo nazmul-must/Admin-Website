@@ -99,7 +99,7 @@ Behaviour worth knowing:
 | Identity's `MASTER_SECRET_KEY` in the admin `.env` to decrypt names/emails | Identity decrypts on its side and returns plaintext through its admin API |
 | Tier limits read from `../Identity-Backend/app/initialize_app/tier.config.json` | Served by Identity's admin API |
 | SQLite for Django's own tables | Managed PostgreSQL |
-| Django's built-in admin login | Operator SSO + MFA |
+| Django's built-in username/password login (`/login/`) | Operator SSO + MFA |
 | Tailwind, HTMX and Chart.js loaded from a CDN | Tailwind standalone CLI build and vendored JS |
 | User search decrypts every user in Python | Search through Identity |
 | No pagination on lists | Paginated lists |
@@ -148,7 +148,7 @@ python manage.py test
 
 **Employees** are the people who sign in to this admin site. They are not **users**: users are the
 customers of Pro3AI, read from the Identity service and shown under *Users*. Super Admins manage
-employees under *Employees* in the sidebar (`/admin/`). Every employee has exactly one role,
+employees under *Employees* in the sidebar (`/employees/`). Every employee has exactly one role,
 required when the employee is added. Each role is a
 Django group, created by the `accounts` migration.
 

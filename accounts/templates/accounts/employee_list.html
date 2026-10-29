@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Employees · Pro3AI Admin{% endblock %}
+{% block content %}
+  <div class="mb-6 flex flex-wrap items-end justify-between gap-4 pb-4">
+    <div>
+      <h1 class="page-title">Employees</h1>
+      <p class="text-muted-foreground">People who sign in to this admin site, and their role. Pro3AI customers are under Users.</p>
+    </div>
+    <a href="{% url 'employee-add' %}" class="btn btn-primary px-5 py-6 font-semibold shadow-lg shadow-primary/20 rounded-lg">
+      <i data-lucide="plus" class="size-4"></i> Add Employee
+    </a>
+  </div>
+
+  <div class="card overflow-x-auto">
+    <table class="data-table">
+      <thead><tr><th>Employee</th><th>Role</th><th>Status</th><th>Last sign-in</th><th>Joined</th><th></th></tr></thead>
+      <tbody>
+        {% for e, role in rows %}
+          <tr>
+            <td>
+              <a href="{% url 'employee-edit' e.pk %}" class="link">{{ e.get_full_name|default:e.username }}</a>
+              <div class="text-xs text-muted-foreground">{{ e.username }}{% if e.email %} · {{ e.email }}{% endif %}</div>
+            </td>
+            <td>
+              {% if role == 'Super Admin' %}<span class="badge bg-primary text-primary-foreground">{{ role }}</span>
+              {% elif role %}<span class="badge bg-secondary text-secondary-foreground">{{ role }}</span>
+              {% else %}<span class="badge border-amber-200 bg-amber-50 text-amber-700">No role</span>{% endif %}
+            </td>
+            <td>{% if e.is_active %}<span class="text-green-600">Active</span>{% else %}<span class="text-muted-foreground">Inactive</span>{% endif %}</td>
+            <td class="text-muted-foreground">{% if e.last_login %}{{ e.last_login|timesince }} ago{% else %}never{% endif %}</td>
+            <td class="text-muted-foreground">{{ e.date_joined|date:"Y-m-d" }}</td>
+            <td class="text-right"><a href="{% url 'employee-edit' e.pk %}" class="link text-sm">Edit</a></td>
+          </tr>
+        {% empty %}<tr><td colspan="6" class="py-8 text-center text-muted-foreground">No employees.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endblock %}

@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}{{ title }} · Pro3AI Admin{% endblock %}
+{% block crumbs %}
+  <li><i data-lucide="chevron-right" class="size-4 text-muted-foreground/40"></i></li>
+  <li><a href="{% url 'employee-list' %}" class="rounded-md px-2 py-1 text-muted-foreground hover:bg-accent/50 hover:text-primary">Employees</a></li>
+  <li><i data-lucide="chevron-right" class="size-4 text-muted-foreground/40"></i></li>
+  <li class="px-2 py-1 font-semibold text-foreground">{{ title }}</li>
+{% endblock %}
+{% block content %}
+  <div class="pb-4">
+    <h1 class="page-title">{{ title }}</h1>
+    <p class="text-muted-foreground">{{ blurb }}</p>
+  </div>
+
+  <form method="post" class="card max-w-3xl space-y-5 p-6" novalidate>
+    {% csrf_token %}
+    {% if form.non_field_errors %}
+      <div class="flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+        <i data-lucide="circle-alert" class="size-4 shrink-0"></i>
+        <span>{% for error in form.non_field_errors %}{{ error }} {% endfor %}</span>
+      </div>
+    {% endif %}
+
+    {% for field in form %}{% include "_field.html" with field=field roles=roles only %}{% endfor %}
+
+    <div class="flex flex-wrap items-center justify-between gap-3 border-t pt-5">
+      {% if password_url %}
+        <a href="{{ password_url }}" class="link inline-flex items-center gap-2 text-sm"><i data-lucide="key-round" class="size-4"></i> Set Password</a>
+      {% else %}<span></span>{% endif %}
+      <div class="flex gap-2">
+        <a href="{{ back_url }}" class="btn btn-outline">Cancel</a>
+        <button type="submit" class="btn btn-primary">{{ submit }}</button>
+      </div>
+    </div>
+  </form>
+{% endblock %}

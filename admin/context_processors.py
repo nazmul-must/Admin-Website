@@ -12,11 +12,16 @@ NAV = [
 ]
 
 
+# Super Admin only; pinned to the bottom of the sidebar.
+EMPLOYEES = ('employee-list', 'Employees', 'id-card', {'employee-list', 'employee-add', 'employee-edit', 'employee-password'})
+
+
 def nav(request):
     current = request.resolver_match.url_name if request.resolver_match else None
-    items = [(name, label, icon, current in active) for name, label, icon, active in NAV]
+    items = [(name, label, icon, current in active) for name, label, icon, active in [*NAV, EMPLOYEES]]
     return {
-        'nav': items,
+        'nav': items[:-1],
+        'employees_nav': items[-1],
         # Breadcrumb label for the current section; detail pages extend it in their template.
         'crumb': next((label for _, label, _, active in items if active), None),
     }

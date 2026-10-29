@@ -52,24 +52,14 @@
     {% if perms.accounts.view_site %}
       <aside class="fixed top-20 left-0 z-30 flex h-[calc(100vh-5rem)] w-50 flex-col border-r border-sidebar-border bg-sidebar shadow-sm">
         <nav class="flex flex-1 flex-col space-y-1.5 overflow-y-auto px-3 py-4">
-          {% for name, label, icon, active in nav %}
-            {% url name as href %}
-            <a href="{{ href }}" {% if active %}aria-current="page"{% endif %}
-               class="group relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium leading-tight transition-all duration-300 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground {% if active %}text-sidebar-primary{% else %}text-sidebar-foreground{% endif %}">
-              {% if active %}<span class="absolute top-2 bottom-2 left-0 w-1 rounded-r-full bg-sidebar-primary"></span>{% endif %}
-              <i data-lucide="{{ icon }}" class="size-5 shrink-0 {% if active %}text-sidebar-primary{% else %}text-muted-foreground group-hover:text-sidebar-accent-foreground{% endif %}"></i>
-              <span>{{ label }}</span>
-            </a>
+          {% for item in nav %}
+            {% include "_nav_link.html" %}
             {% if forloop.first %}<div class="mx-2 my-2 h-px bg-sidebar-border"></div>{% endif %}
           {% endfor %}
           {% if perms.accounts.manage_employees %}
             <div class="mt-auto"></div>
             <div class="mx-2 my-2 h-px bg-sidebar-border"></div>
-            <a href="{% url 'admin:accounts_employee_changelist' %}"
-               class="group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium leading-tight text-sidebar-foreground transition-all duration-300 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground">
-              <i data-lucide="id-card" class="size-5 shrink-0 text-muted-foreground group-hover:text-sidebar-accent-foreground"></i>
-              <span>Employees</span>
-            </a>
+            {% include "_nav_link.html" with item=employees_nav %}
           {% endif %}
         </nav>
       </aside>
@@ -89,6 +79,12 @@
       </nav>
 
       <div>
+        {% for message in messages %}
+          <div class="mb-6 flex items-center gap-2 rounded-lg border px-4 py-3 text-sm {% if message.level_tag == 'error' %}border-red-200 bg-red-50 text-red-700{% else %}border-primary/20 bg-accent text-secondary-foreground{% endif %}">
+            <i data-lucide="{% if message.level_tag == 'error' %}circle-alert{% else %}circle-check{% endif %}" class="size-4 shrink-0"></i>
+            <span>{{ message }}</span>
+          </div>
+        {% endfor %}
         {% if down %}
           <div class="mb-6 flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
             <i data-lucide="circle-alert" class="size-4 shrink-0"></i>

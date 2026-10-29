@@ -2,7 +2,7 @@
 {% load static %}
 {% block title %}Log In · Pro3AI Admin{% endblock %}
 {% block body %}
-  {# Login for every role (/login/) and for the Super Admin /admin/ area (admin.site.login_template). Design system §6.6. #}
+  {# Login for every employee. Design system §6.6. #}
   <div class="flex min-h-dvh flex-col bg-gray-100">
     <header class="bg-secondary-foreground px-6 py-4 text-white">
       <img src="{% static 'images/logo-pro3ai.svg' %}" alt="Pro3AI" class="h-12 object-contain">
@@ -13,32 +13,17 @@
         <h1 class="mb-4 text-3xl font-bold">Log In</h1>
         <p class="mb-6 text-sm text-secondary-foreground">Pro3AI platform administration</p>
 
-        {% if form.non_field_errors or form.errors %}
+        {% if form.non_field_errors %}
           <div class="mb-4 w-full rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-            {% for error in form.non_field_errors %}<p>{{ error }}</p>{% empty %}<p>Please correct the errors below.</p>{% endfor %}
-          </div>
-        {% endif %}
-        {% if user.is_authenticated %}
-          <div class="mb-4 w-full rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
-            You are logged in as {{ user.get_username }}, but only a Super Admin can open this area.
+            {% for error in form.non_field_errors %}<p>{{ error }}</p>{% endfor %}
           </div>
         {% endif %}
 
-        <form method="post" action="" class="flex w-full flex-col gap-4">
+        <form method="post" class="flex w-full flex-col gap-4">
           {% csrf_token %}
           <input type="hidden" name="next" value="{{ next }}">
-          <div class="relative">
-            <input id="id_username" name="username" type="text" value="{{ form.username.value|default:'' }}" placeholder=" "
-                   autocomplete="username" autofocus required
-                   class="peer h-14 w-full rounded-md border bg-background px-3 pt-6 pb-2 text-sm outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/20 {% if form.username.errors %}border-destructive{% else %}border-input{% endif %}">
-            <label for="id_username" class="pointer-events-none absolute top-2 left-3 text-xs text-muted-foreground transition-all peer-placeholder-shown:top-1/2 peer-placeholder-shown:-translate-y-1/2 peer-placeholder-shown:text-base peer-focus:top-2 peer-focus:translate-y-0 peer-focus:text-xs peer-focus:text-primary">Username <span class="text-destructive">*</span></label>
-          </div>
-          <div class="relative">
-            <input id="id_password" name="password" type="password" placeholder=" " autocomplete="current-password" required
-                   class="peer h-14 w-full rounded-md border bg-background px-3 pt-6 pb-2 text-sm outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/20 {% if form.password.errors %}border-destructive{% else %}border-input{% endif %}">
-            <label for="id_password" class="pointer-events-none absolute top-2 left-3 text-xs text-muted-foreground transition-all peer-placeholder-shown:top-1/2 peer-placeholder-shown:-translate-y-1/2 peer-placeholder-shown:text-base peer-focus:top-2 peer-focus:translate-y-0 peer-focus:text-xs peer-focus:text-primary">Password <span class="text-destructive">*</span></label>
-          </div>
-          <button type="submit" class="mt-2 inline-flex h-11 w-full cursor-pointer items-center justify-center rounded-md bg-primary px-5 text-sm font-medium text-primary-foreground outline-none transition-all hover:bg-primary/90 focus-visible:ring-[3px] focus-visible:ring-ring/50">Log In</button>
+          {% for field in form %}{% include "_field.html" with field=field only %}{% endfor %}
+          <button type="submit" class="btn btn-primary mt-2 w-full">Log In</button>
         </form>
       </div>
     </main>

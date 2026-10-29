@@ -4,8 +4,8 @@ Employees are the people who sign in to this admin site. They are not Pro3AI use
 the customers of the product, read from the Identity service (servicedata.models.User).
 
 Each role is a Django group holding these permissions:
-- Super Admin: `view_site` + `edit_site` + `manage_employees`, plus the Employee admin
-  permissions, so its members add employees and assign roles at /admin/ (Employees).
+- Super Admin: `view_site` + `edit_site` + `manage_employees`: everything, including the
+  Employees pages where employees are added and given their role.
 - Manager: `view_site` + `edit_site`. Day-to-day work: edit, modify, download.
 - Monitor: `view_site`. Read-only monitoring.
 
@@ -51,5 +51,12 @@ class Employee(User):
 
     class Meta(User.Meta):  # at runtime this is AbstractUser.Meta: only verbose names, no `swappable`
         proxy = True
+        default_permissions = ()  # access comes from `manage_employees`
         verbose_name = 'employee'
         verbose_name_plural = 'employees'
+
+
+def employee_role(employee):
+    """The employee's role name. Superusers made with createsuperuser count as Super Admin."""
+    role = next((g.name for g in employee.groups.all() if g.name in ROLES), None)
+    return role or (SUPER_ADMIN if employee.is_superuser else None)

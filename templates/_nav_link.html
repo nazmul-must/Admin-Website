@@ -1,0 +1,9 @@
+{# One sidebar row (design system §6.3). Expects: item = (url name, label, lucide icon, active). #}
+{% with name=item.0 label=item.1 icon=item.2 active=item.3 %}{% url name as href %}
+<a href="{{ href }}" {% if active %}aria-current="page"{% endif %}
+   class="group relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium leading-tight transition-all duration-300 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground {% if active %}text-sidebar-primary{% else %}text-sidebar-foreground{% endif %}">
+  {% if active %}<span class="absolute top-2 bottom-2 left-0 w-1 rounded-r-full bg-sidebar-primary"></span>{% endif %}
+  <i data-lucide="{{ icon }}" class="size-5 shrink-0 {% if active %}text-sidebar-primary{% else %}text-muted-foreground group-hover:text-sidebar-accent-foreground{% endif %}"></i>
+  <span>{{ label }}</span>
+</a>
+{% endwith %}

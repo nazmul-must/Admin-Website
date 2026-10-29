@@ -14,15 +14,16 @@ Including another URLconf
     1. Import the include() function: from django.urls import include, path
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
-from django.contrib import admin
 from django.contrib.auth import views as auth_views
 from django.urls import path
 
+from accounts import views as accounts
+from accounts.forms import LoginForm
 from analytics import views as analytics
 from tenants.views import org_detail_view, org_list, user_detail_view, user_list
 
 urlpatterns = [
-    path('login/', auth_views.LoginView.as_view(redirect_authenticated_user=True), name='login'),
+    path('login/', auth_views.LoginView.as_view(authentication_form=LoginForm, redirect_authenticated_user=True), name='login'),
     path('logout/', auth_views.LogoutView.as_view(), name='logout'),
     path('', analytics.overview, name='overview'),
     path('orgs/', org_list, name='org-list'),
@@ -34,5 +35,8 @@ urlpatterns = [
     path('analytics/ai/', analytics.ai_usage, name='ai-usage'),
     path('analytics/engagement/', analytics.engagement, name='engagement'),
     path('analytics/access/', analytics.access, name='access'),
-    path('admin/', admin.site.urls),
+    path('employees/', accounts.employee_list, name='employee-list'),
+    path('employees/new/', accounts.employee_add, name='employee-add'),
+    path('employees/<int:pk>/', accounts.employee_edit, name='employee-edit'),
+    path('employees/<int:pk>/password/', accounts.employee_password, name='employee-password'),
 ]

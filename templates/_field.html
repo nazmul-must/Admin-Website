@@ -1,0 +1,32 @@
+{% load admin_extras %}
+{# One form field in the design-system style. Expects: field, [roles] (role -> description, for the role radio). #}
+<div class="space-y-1.5">
+  {% if field.widget_type == 'radioselect' %}
+    <fieldset>
+      <legend class="mb-2 text-sm font-medium">{{ field.label }}{% if field.field.required %} <span class="text-destructive">*</span>{% endif %}</legend>
+      <div class="grid gap-3 sm:grid-cols-3 [&_input]:mt-0.5 [&_input]:size-4 [&_input]:shrink-0 [&_input]:accent-primary">
+        {% for choice in field %}
+          <label for="{{ choice.id_for_label }}"
+                 class="flex cursor-pointer items-start gap-3 rounded-lg border bg-background p-4 transition-colors hover:bg-accent has-[:checked]:border-primary has-[:checked]:bg-secondary has-[:checked]:ring-2 has-[:checked]:ring-primary/20 {% if field.errors %}border-destructive{% endif %}">
+            {{ choice.tag }}
+            <span>
+              <span class="block text-sm font-semibold">{{ choice.choice_label }}</span>
+              {% if roles %}<span class="mt-0.5 block text-xs text-muted-foreground">{{ roles|get:choice.data.value|capfirst }}</span>{% endif %}
+            </span>
+          </label>
+        {% endfor %}
+      </div>
+    </fieldset>
+  {% elif field.widget_type == 'checkbox' %}
+    <label for="{{ field.id_for_label }}" class="flex cursor-pointer items-center gap-3 text-sm font-medium [&_input]:size-4 [&_input]:accent-primary">
+      {{ field }} {{ field.label }}
+    </label>
+  {% else %}
+    <div class="notched {% if field.errors %}has-error{% endif %}">
+      {{ field }}
+      <label for="{{ field.id_for_label }}">{{ field.label }}{% if field.field.required %} <span class="text-destructive">*</span>{% endif %}</label>
+    </div>
+  {% endif %}
+  {% for error in field.errors %}<p class="text-xs text-destructive">{{ error }}</p>{% endfor %}
+  {% if field.help_text %}<div class="text-xs text-muted-foreground [&_ul]:list-disc [&_ul]:pl-4">{{ field.help_text|safe }}</div>{% endif %}
+</div>

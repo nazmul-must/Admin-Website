@@ -1,4 +1,3 @@
-from django.contrib import admin
 from django.contrib.auth.models import AnonymousUser, Group, User
 from django.core.exceptions import PermissionDenied
 from django.http import HttpResponse
@@ -7,7 +6,7 @@ from django.test import RequestFactory, TestCase
 from admin.context_processors import role
 
 from .decorators import edit_required, view_required
-from .models import MANAGER, MONITOR, SUPER_ADMIN, Employee
+from .models import MANAGER, MONITOR, SUPER_ADMIN
 
 
 @view_required
@@ -38,8 +37,13 @@ class RoleTests(TestCase):
         except PermissionDenied:
             return False
 
-    def test_migration_creates_the_three_groups(self):
-        self.assertEqual(set(Group.objects.values_list('name', flat=True)), {SUPER_ADMIN, MANAGER, MONITOR})
+    def test_migrations_create_the_three_roles(self):
+        perms = {g.name: set(g.permissions.values_list('codename', flat=True)) for g in Group.objects.all()}
+        self.assertEqual(perms, {
+            SUPER_ADMIN: {'view_site', 'edit_site', 'manage_employees'},
+            MANAGER: {'view_site', 'edit_site'},
+            MONITOR: {'view_site'},
+        })
 
     def test_anonymous_goes_to_login(self):
         response = page(self.request(AnonymousUser()))
@@ -47,7 +51,7 @@ class RoleTests(TestCase):
         self.assertIn('/login/', response['Location'])
 
     def test_access_by_role(self):
-        # (employee, can view, can edit, can manage employees at /admin/)
+        # (employee, can view, can edit, can open the Employees pages)
         cases = [
             (self.user('nobody'), False, False, False),
             (self.user('monitor', MONITOR), True, False, False),
@@ -57,9 +61,10 @@ class RoleTests(TestCase):
         ]
         for user, view, edit, manage in cases:
             with self.subTest(user=user.username):
+                self.client.force_login(user)
                 got = (self.allowed(page, user), self.allowed(action, user),
-                       admin.site.has_permission(self.request(user)), user.has_perm('accounts.change_employee'))
-                self.assertEqual(got, (view, edit, manage, manage))
+                       self.client.get('/employees/').status_code == 200)
+                self.assertEqual(got, (view, edit, manage))
 
     def test_role_labels(self):
         cases = [(self.user('a', SUPER_ADMIN), SUPER_ADMIN), (self.user('b', is_superuser=True), SUPER_ADMIN),
@@ -67,35 +72,53 @@ class RoleTests(TestCase):
         for user, label in cases:
             self.assertEqual(role(self.request(user))['role'], label)
 
-    def test_admin_lists_employees_not_users_or_groups(self):
-        registered = set(admin.site._registry)
-        self.assertIn(Employee, registered)
-        self.assertFalse({User, Group} & registered)
 
-    def test_super_admin_group_can_open_employee_pages(self):
-        boss = self.user('boss', SUPER_ADMIN)
-        monitor = self.user('watcher', MONITOR)
-        self.client.force_login(boss)
-        for url in ['/admin/accounts/employee/', '/admin/accounts/employee/add/',
-                    f'/admin/accounts/employee/{monitor.pk}/change/']:
+class EmployeePagesTests(TestCase):
+    def setUp(self):
+        self.boss = User.objects.create_user('boss', password='x')
+        self.boss.groups.add(Group.objects.get(name=SUPER_ADMIN))
+        self.client.force_login(self.boss)
+
+    def test_pages_render(self):
+        for url in ['/employees/', '/employees/new/', f'/employees/{self.boss.pk}/',
+                    f'/employees/{self.boss.pk}/password/']:
             with self.subTest(url=url):
                 self.assertEqual(self.client.get(url).status_code, 200)
-        self.client.force_login(monitor)
-        self.assertEqual(self.client.get('/admin/accounts/employee/').status_code, 302)  # to login
 
-    def test_role_is_required_and_single(self):
-        self.client.force_login(self.user('boss', SUPER_ADMIN))
-        form = {'username': 'newbie', 'usable_password': 'true', 'password1': 'S3cure-pass!', 'password2': 'S3cure-pass!'}
-        response = self.client.post('/admin/accounts/employee/add/', form)
+    def test_add_requires_a_role_and_gives_exactly_one(self):
+        form = {'username': 'newbie', 'password1': 'S3cure-pass!', 'password2': 'S3cure-pass!'}
+        response = self.client.post('/employees/new/', form)
         self.assertContains(response, 'This field is required')
         self.assertFalse(User.objects.filter(username='newbie').exists())
 
-        self.client.post('/admin/accounts/employee/add/', {**form, 'role': MANAGER})
+        self.client.post('/employees/new/', {**form, 'role': MANAGER})
         newbie = User.objects.get(username='newbie')
         self.assertEqual(list(newbie.groups.values_list('name', flat=True)), [MANAGER])
+        self.assertTrue(newbie.check_password('S3cure-pass!'))
 
-    def test_change_page_shows_current_role(self):
-        root = self.user('root', is_superuser=True)  # createsuperuser account: no group yet
-        self.client.force_login(root)
-        html = self.client.get(f'/admin/accounts/employee/{root.pk}/change/').content.decode()
+    def test_edit_replaces_the_role(self):
+        clerk = User.objects.create_user('clerk')
+        clerk.groups.add(Group.objects.get(name=MONITOR))
+        self.client.post(f'/employees/{clerk.pk}/', {'username': 'clerk', 'role': MANAGER, 'is_active': 'on'})
+        self.assertEqual(list(clerk.groups.values_list('name', flat=True)), [MANAGER])
+
+    def test_edit_page_shows_current_role(self):
+        root = User.objects.create_superuser('root', password='x')  # createsuperuser account: no group yet
+        html = self.client.get(f'/employees/{root.pk}/').content.decode()
         self.assertRegex(html, r'<input type="radio" name="role" value="Super Admin"[^>]*checked')
+
+    def test_cannot_remove_own_super_admin_access(self):
+        for data in [{'role': MANAGER, 'is_active': 'on'}, {'role': SUPER_ADMIN}]:
+            with self.subTest(data=data):
+                response = self.client.post(f'/employees/{self.boss.pk}/', {'username': 'boss', **data})
+                self.assertContains(response, "can&#x27;t remove your own Super Admin access")
+        self.boss.refresh_from_db()
+        self.assertTrue(self.boss.is_active)
+        self.assertEqual(list(self.boss.groups.values_list('name', flat=True)), [SUPER_ADMIN])
+
+    def test_set_password_keeps_own_session(self):
+        self.client.post(f'/employees/{self.boss.pk}/password/',
+                         {'new_password1': 'N3w-secret-pw', 'new_password2': 'N3w-secret-pw'})
+        self.boss.refresh_from_db()
+        self.assertTrue(self.boss.check_password('N3w-secret-pw'))
+        self.assertEqual(self.client.get('/employees/').status_code, 200)
