@@ -1,0 +1,5 @@
+<div class="inline-flex gap-1 rounded-lg border bg-background p-1 text-sm shadow-xs">
+  {% for d in windows %}
+    <a href="?days={{ d }}" class="rounded-md px-3 py-1.5 font-medium transition-colors {% if d == days %}bg-primary text-primary-foreground{% else %}text-muted-foreground hover:bg-accent hover:text-accent-foreground{% endif %}">{{ d }}d</a>
+  {% endfor %}
+</div>

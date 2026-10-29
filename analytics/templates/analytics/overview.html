@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% load admin_extras %}
+{% block title %}Overview · Pro3AI Admin{% endblock %}
+{% block content %}
+  {% include "analytics/_header.html" with heading="Platform overview" blurb="Tenants, billing and usage across all services. Service health lives in Grafana." %}
+
+  <div class="mb-6 grid grid-cols-2 gap-4 md:grid-cols-4 xl:grid-cols-8">
+    {% if idn %}
+      {% include "_kpi.html" with label="Organizations" value=idn.orgs sub=idn.orgs_new|stringformat:"d"|add:" new in 30d" only %}
+      {% include "_kpi.html" with label="Users" value=idn.users sub=idn.users_new|stringformat:"d"|add:" new in 30d" only %}
+      {% include "_kpi.html" with label="Programmes" value=idn.programmes only %}
+    {% endif %}
+    {% include "_kpi.html" with label="Paid & active" value=paid sub=subs|length|stringformat:"d"|add:" subscriptions total" only %}
+    {% include "_kpi.html" with label="Billing problems" value=past_due sub="past due / unpaid / cancelled" only %}
+    {% if ai_mtd is not None %}{% include "_kpi.html" with label="AI credits MTD" value=ai_mtd|credits sub=ai_mtd|floatformat:2|add:" USD" only %}{% endif %}
+    {% if docs is not None %}{% include "_kpi.html" with label="Documents" value=docs only %}{% endif %}
+    {% if items is not None %}{% include "_kpi.html" with label="Work items" value=items only %}{% endif %}
+  </div>
+
+  <div class="mb-6 grid gap-4 lg:grid-cols-2">
+    {% include "_chart.html" with title="New organizations / day" id="c-signups" cfg=charts.signups only %}
+    {% include "_chart.html" with title="Total organizations" id="c-total" cfg=charts.total only %}
+    {% include "_chart.html" with title="Subscriptions by tier" id="c-tier" cfg=charts.tier only %}
+    {% include "_chart.html" with title="Subscriptions by status" id="c-status" cfg=charts.status only %}
+  </div>
+
+  <div class="grid gap-4 lg:grid-cols-2">
+    <div class="card p-6">
+      <h2 class="card-title mb-4">Needs attention</h2>
+      {% for a in attention %}
+        <div class="flex items-center justify-between border-t py-2 text-sm">
+          <a href="{% url 'org-detail' a.org_id %}" class="link">{{ a.name }}</a>
+          <span class="badge {% if a.level == 'red' %}border-red-200 bg-red-50 text-destructive{% else %}border-amber-200 bg-amber-50 text-amber-700{% endif %}">{{ a.reason }}</span>
+        </div>
+      {% empty %}<p class="text-sm text-muted-foreground">Nothing needs attention.</p>{% endfor %}
+    </div>
+    <div class="card p-6">
+      <h2 class="card-title mb-4">Newest organizations</h2>
+      {% for o in idn.newest %}
+        <div class="flex items-center justify-between border-t py-2 text-sm">
+          <a href="{% url 'org-detail' o.id %}" class="link">{{ o.name }}</a>
+          <span class="text-muted-foreground">{{ o.created_at|timesince }} ago</span>
+        </div>
+      {% empty %}<p class="text-sm text-muted-foreground">None.</p>{% endfor %}
+    </div>
+  </div>
+{% endblock %}

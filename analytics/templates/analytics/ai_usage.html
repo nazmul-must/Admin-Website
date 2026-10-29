@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% load admin_extras %}
+{% block title %}AI usage · Pro3AI Admin{% endblock %}
+{% block content %}
+  {% include "analytics/_header.html" with heading="AI usage & credits" blurb="LLM spend, tokens and agent workloads. 1 credit = $0.01 of OpenRouter cost." %}
+
+  {% if ai %}
+    <div class="mb-6 grid grid-cols-2 gap-4 md:grid-cols-6">
+      {% include "_kpi.html" with label="Credits (window)" value=ai.totals.cost|credits sub=ai.totals.cost|default:0|floatformat:2|add:" USD" only %}
+      {% include "_kpi.html" with label="LLM calls" value=ai.totals.calls only %}
+      {% include "_kpi.html" with label="Tokens in" value=ai.totals.prompt|default:0 only %}
+      {% include "_kpi.html" with label="Tokens out" value=ai.totals.completion|default:0 only %}
+      {% include "_kpi.html" with label="Orgs using AI" value=ai.orgs_using only %}
+      {% include "_kpi.html" with label="Plan run failures" value=ai.run_failure_pct|default_if_none:"—"|stringformat:"s"|add:"%" sub="of runs in window" only %}
+    </div>
+
+    <div class="mb-6 grid gap-4 lg:grid-cols-2">
+      {% include "_chart.html" with title="Credits / day" id="c-cost" cfg=charts.cost only %}
+      {% include "_chart.html" with title="Tokens / day" id="c-tokens" cfg=charts.tokens only %}
+      {% include "_chart.html" with title="Credits by model" id="c-model" cfg=charts.model only %}
+      {% include "_chart.html" with title="Credits by feature" id="c-feature" cfg=charts.feature only %}
+      {% include "_chart.html" with title="Plan runs / day" id="c-runs" cfg=charts.runs only %}
+      {% include "_chart.html" with title="Agent chat sessions / day" id="c-sessions" cfg=charts.sessions only %}
+    </div>
+
+    <div class="grid gap-4 lg:grid-cols-3">
+      <div class="card overflow-x-auto lg:col-span-2">
+        <h2 class="card-title px-6 py-4">Top organizations this month</h2>
+        <table class="data-table">
+          <thead><tr><th>Organization</th><th class="text-right">Credits MTD</th><th>Allowance</th></tr></thead>
+          <tbody>
+            {% for t in top %}
+              <tr>
+                <td><a href="{% url 'org-detail' t.org_id %}" class="link">{{ t.name }}</a></td>
+                <td class="text-right">{{ t.usd|credits }}</td>
+                <td>
+                  {% if t.pct is not None %}
+                    <div class="flex items-center gap-2"><div class="h-1.5 w-24 rounded-full bg-secondary"><div class="h-1.5 rounded-full {{ t.pct|pct_class }}" style="width: {% if t.pct > 100 %}100{% else %}{{ t.pct }}{% endif %}%"></div></div>
+                    <span class="text-xs text-muted-foreground">{{ t.pct }}% of {{ t.allowance|credits }}</span></div>
+                  {% else %}<span class="text-xs text-muted-foreground/70">unlimited</span>{% endif %}
+                </td>
+              </tr>
+            {% empty %}<tr><td colspan="3" class="py-8 text-center text-muted-foreground">No AI usage this month.</td></tr>{% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <div class="space-y-4">
+        {% include "_chart.html" with title="Document ingestion (window)" id="c-ingest" cfg=charts.ingestion only %}
+        <div class="card p-6 text-sm">
+          <h2 class="card-title mb-4">Per-org OpenRouter keys</h2>
+          <p>{{ ai.keys }} keys · <span class="{% if ai.keys_disabled %}text-destructive{% endif %}">{{ ai.keys_disabled }} disabled</span> · <span class="{% if ai.keys_stale %}text-amber-700{% endif %}">{{ ai.keys_stale }} not synced in 24h</span></p>
+        </div>
+      </div>
+    </div>
+  {% else %}
+    <p class="text-muted-foreground">Agent data unavailable.</p>
+  {% endif %}
+{% endblock %}

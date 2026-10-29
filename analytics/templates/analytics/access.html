@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Access · Pro3AI Admin{% endblock %}
+{% block content %}
+  {% include "analytics/_header.html" with heading="Access decisions" blurb="Every permission check from the Authorization service. Spikes in denials usually mean a role/RBAC problem, not misuse." %}
+
+  {% if a %}
+    <div class="mb-6 grid grid-cols-2 gap-4 md:grid-cols-4">
+      {% include "_kpi.html" with label="Decisions" value=a.total only %}
+      {% include "_kpi.html" with label="Denied" value=a.denied only %}
+      {% include "_kpi.html" with label="Deny rate" value=a.deny_pct|default_if_none:"—"|stringformat:"s"|add:"%" only %}
+      {% include "_kpi.html" with label="Members checked" value=a.members only %}
+    </div>
+
+    <div class="mb-6 grid gap-4 lg:grid-cols-3">
+      {% include "_chart.html" with title="Decisions / day" id="c-daily" cfg=charts.daily class="lg:col-span-3" only %}
+      {% include "_chart.html" with title="Denials by action" id="c-action" cfg=charts.deny_action only %}
+      {% include "_chart.html" with title="Denials by source" id="c-dsource" cfg=charts.deny_source only %}
+      {% include "_chart.html" with title="Allows by source" id="c-asource" cfg=charts.allow_source only %}
+    </div>
+
+    <div class="card overflow-x-auto">
+      <h2 class="card-title px-6 py-4">Most-denied members</h2>
+      <table class="data-table">
+        <thead><tr><th>Member</th><th>Organization</th><th class="text-right">Denials</th></tr></thead>
+        <tbody>
+          {% for t in top %}
+            <tr>
+              <td class="font-mono text-xs">{{ t.member }}</td>
+              <td>{% if t.org_id %}<a href="{% url 'org-detail' t.org_id %}" class="link">{{ t.org }}</a>{% else %}<span class="text-muted-foreground/70">unknown member</span>{% endif %}</td>
+              <td class="text-right">{{ t.n }}</td>
+            </tr>
+          {% empty %}<tr><td colspan="3" class="py-8 text-center text-muted-foreground">No denials.</td></tr>{% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <p class="text-muted-foreground">Authorization data unavailable.</p>
+  {% endif %}
+{% endblock %}

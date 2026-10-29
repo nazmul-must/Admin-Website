@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% load admin_extras %}
+{% block title %}Engagement · Pro3AI Admin{% endblock %}
+{% block content %}
+  {% include "analytics/_header.html" with heading="Engagement & adoption" blurb="Activity per tenant. Active = made at least one permission-checked request (Authorization decision log)." %}
+
+  <div class="mb-6 grid grid-cols-2 gap-4 md:grid-cols-4">
+    {% if authz %}
+      {% include "_kpi.html" with label="Weekly active members" value=authz.wau only %}
+      {% include "_kpi.html" with label="Monthly active members" value=authz.mau only %}
+    {% endif %}
+    {% include "_kpi.html" with label="Organizations" value=rows|length only %}
+    {% include "_kpi.html" with label="Dormant" value=dormant sub=dormant_days|stringformat:"d"|add:"+ days without activity" only %}
+  </div>
+
+  <div class="mb-6 grid gap-4 lg:grid-cols-3">
+    {% include "_chart.html" with title="Daily active members & organizations" id="c-dau" cfg=charts.dau class="lg:col-span-2" only %}
+    {% include "_chart.html" with title="Feature adoption (organizations)" id="c-adoption" cfg=charts.adoption only %}
+    {% include "_chart.html" with title="Content created / day" id="c-created" cfg=charts.created class="lg:col-span-3" only %}
+  </div>
+
+  <div class="card overflow-x-auto">
+    <h2 class="card-title px-6 py-4">Organizations by last activity</h2>
+    <table class="data-table">
+      <thead><tr>
+        <th>Organization</th><th>Last activity</th>
+        <th class="text-right">Active members ({{ days }}d)</th><th class="text-right">Documents</th>
+        <th class="text-right">Work items</th><th class="text-right">AI credits ({{ days }}d)</th><th class="text-right">Unread notifications</th>
+      </tr></thead>
+      <tbody>
+        {% for r in rows %}
+          <tr{% if r.dormant %} class="bg-amber-50"{% endif %}>
+            <td><a href="{% url 'org-detail' r.org_id %}" class="link">{{ r.name }}</a>{% if r.dormant %} <span class="text-xs text-amber-700">dormant</span>{% endif %}</td>
+            <td class="text-muted-foreground">{% if r.last_seen %}{{ r.last_seen|timesince }} ago{% else %}never{% endif %}</td>
+            <td class="text-right">{{ r.active_members }}</td>
+            <td class="text-right">{{ r.docs }}</td>
+            <td class="text-right">{{ r.items }}</td>
+            <td class="text-right">{{ r.ai_usd|credits }}</td>
+            <td class="text-right">{{ r.unread }}</td>
+          </tr>
+        {% empty %}<tr><td colspan="7" class="py-8 text-center text-muted-foreground">No organizations.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endblock %}

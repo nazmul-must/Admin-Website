@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block title %}Users · Pro3AI Admin{% endblock %}
+{% block content %}
+  <div class="mb-6 flex flex-wrap items-end justify-between gap-4 pb-4">
+    <div>
+      <h1 class="page-title">Users</h1>
+      {% if not pii_enabled %}<p class="text-sm text-amber-700">MASTER_SECRET_KEY not set: names and emails shown encrypted; search by ID only.</p>{% endif %}
+    </div>
+    <form class="flex flex-wrap gap-2" hx-get="{% url 'user-list' %}" hx-target="#user-table"
+          hx-trigger="input changed delay:300ms from:input, change from:select" hx-push-url="true">
+      <div class="relative">
+        <i data-lucide="search" class="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"></i>
+        <input type="search" name="q" value="{{ q }}" placeholder="{% if pii_enabled %}Name, email or ID{% else %}User ID{% endif %}"
+               class="input w-72 pl-10">
+      </div>
+      <select name="org" class="input max-w-48">
+        <option value="">All organizations</option>
+        {% for id, name in orgs %}<option value="{{ id }}" {% if id == org %}selected{% endif %}>{{ name }}</option>{% endfor %}
+      </select>
+      <select name="verified" class="input">
+        <option value="">Email: any</option>
+        <option value="yes" {% if verified == 'yes' %}selected{% endif %}>Verified</option>
+        <option value="no" {% if verified == 'no' %}selected{% endif %}>Not verified</option>
+      </select>
+      <select name="mfa" class="input">
+        <option value="">MFA: any</option>
+        <option value="on" {% if mfa == 'on' %}selected{% endif %}>MFA on</option>
+        <option value="off" {% if mfa == 'off' %}selected{% endif %}>MFA off</option>
+      </select>
+    </form>
+  </div>
+
+  {% partialdef user-table inline %}
+  <div id="user-table" class="card overflow-x-auto">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>User</th>
+          <th>Organizations</th>
+          <th class="text-right">Memberships</th>
+          <th>Email verified</th>
+          <th>MFA</th>
+          <th>Last active</th>
+          <th>Signed up</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in rows %}
+          <tr>
+            <td>{% include "_user.html" with user=r.user name=r.name email=r.email decrypted=r.decrypted link=True only %}</td>
+            <td>
+              {% for id, name in r.orgs %}<a href="{% url 'org-detail' id %}" class="badge mr-1 bg-muted text-foreground hover:bg-secondary hover:text-secondary-foreground">{{ name }}</a>{% empty %}<span class="text-muted-foreground/70">none</span>{% endfor %}
+              {% if r.owner_of %}<span class="text-xs text-secondary-foreground">owner of {{ r.owner_of }}</span>{% endif %}
+            </td>
+            <td class="text-right">{{ r.memberships }}</td>
+            <td>{% if r.user.email_verified %}<span class="text-green-600">yes</span>{% else %}<span class="text-amber-700">no</span>{% endif %}</td>
+            <td>{{ r.user.mfa_method|default:"off" }}</td>
+            <td class="text-muted-foreground">{% if r.last_seen %}{{ r.last_seen|timesince }} ago{% else %}never{% endif %}</td>
+            <td class="text-muted-foreground">{{ r.user.created_at|date:"Y-m-d" }}</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="7" class="py-8 text-center text-muted-foreground">No users match.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <div class="border-t px-6 py-3 text-xs text-muted-foreground">{{ rows|length }} user{{ rows|length|pluralize }}</div>
+  </div>
+  {% endpartialdef %}
+{% endblock %}

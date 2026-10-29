@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+{% load admin_extras %}
+{% block title %}{% if decrypted %}{{ name }}{% else %}User{% endif %} · Pro3AI Admin{% endblock %}
+{% block crumbs %}
+  <li><i data-lucide="chevron-right" class="size-4 text-muted-foreground/40"></i></li>
+  <li><a href="{% url 'user-list' %}" class="rounded-md px-2 py-1 text-muted-foreground hover:bg-accent/50 hover:text-primary">Users</a></li>
+  <li><i data-lucide="chevron-right" class="size-4 text-muted-foreground/40"></i></li>
+  <li class="px-2 py-1 font-semibold text-foreground">{% if decrypted %}{{ name }}{% else %}User{% endif %}</li>
+{% endblock %}
+{% block content %}
+
+  {# --- header --- #}
+  <div class="mb-6 flex flex-wrap items-start justify-between gap-4">
+    <div>
+      {% if decrypted %}
+        <h1 class="page-title">{{ name }}</h1>
+        <div class="text-muted-foreground">{{ email }}</div>
+      {% else %}
+        <h1 class="font-mono text-lg" title="Encrypted name">{{ account.name_ciphertext|truncatechars:48 }}</h1>
+        <div class="font-mono text-sm text-muted-foreground" title="Encrypted email">{{ account.email_ciphertext|truncatechars:48 }}</div>
+        {% if not pii_enabled %}<p class="text-xs text-amber-700">Set MASTER_SECRET_KEY to decrypt.</p>{% endif %}
+      {% endif %}
+      <div class="mt-2 flex flex-wrap items-center gap-2 text-sm">
+        {% if account.email_verified %}<span class="badge bg-secondary text-secondary-foreground">email verified</span>{% else %}<span class="badge border-amber-200 bg-amber-50 text-amber-700">email not verified</span>{% endif %}
+        {% if account.mfa_method %}<span class="badge bg-secondary text-secondary-foreground">MFA: {{ account.mfa_method }}</span>{% else %}<span class="badge bg-muted text-muted-foreground">MFA off</span>{% endif %}
+        {% if account.deleted_at %}<span class="badge border-red-200 bg-red-50 text-destructive">deleted {{ account.deleted_at|date:"Y-m-d" }}</span>{% endif %}
+        <span class="text-muted-foreground">signed up {{ account.created_at|date:"Y-m-d" }} ({{ account.created_at|timesince }} ago) · updated {{ account.updated_at|date:"Y-m-d" }}</span>
+      </div>
+      <div class="mt-1 font-mono text-xs text-muted-foreground">{{ account.id }}</div>
+    </div>
+    {% include "_window.html" %}
+  </div>
+
+  {# --- KPIs --- #}
+  <div class="mb-6 grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-6">
+    {% include "_kpi.html" with label="Organizations" value=org_count only %}
+    {% include "_kpi.html" with label="Memberships" value=memberships|length only %}
+    {% if access %}{% include "_kpi.html" with label="Access checks (window)" value=access.total only %}{% endif %}
+    {% if ai %}{% include "_kpi.html" with label="AI credits" value=ai.window.cost|credits sub=ai.window.calls|stringformat:"d"|add:" calls" only %}{% endif %}
+    {% if docs %}{% include "_kpi.html" with label="Uploads" value=docs.uploads sub=docs.bytes|filesizeformat only %}{% endif %}
+    {% if notes %}{% include "_kpi.html" with label="Notifications" value=notes.total sub=notes.unread|stringformat:"d"|add:" unread" only %}{% endif %}
+  </div>
+
+  {# --- memberships --- #}
+  <div class="mb-6 card overflow-x-auto">
+    <h2 class="card-title px-6 py-4">Memberships</h2>
+    <table class="data-table">
+      <thead><tr>
+        <th>Organization</th><th>Scope</th><th>Flags</th>
+        <th>Member ID</th><th>Joined</th>
+      </tr></thead>
+      <tbody>
+        {% for r in memberships %}
+          <tr>
+            <td><a href="{% url 'org-detail' r.m.org_id %}" class="link">{{ r.org }}</a></td>
+            <td>{{ r.scope }}</td>
+            <td class="space-x-1 text-xs">
+              {% if r.m.is_owner %}<span class="badge bg-secondary text-secondary-foreground">owner</span>{% endif %}
+              {% if r.m.is_external %}<span class="badge border-amber-200 bg-amber-50 text-amber-700">external</span>{% endif %}
+              {% if not r.m.is_org_active %}<span class="badge border-red-200 bg-red-50 text-destructive">inactive</span>{% endif %}
+            </td>
+            <td class="font-mono text-xs text-muted-foreground">{{ r.m.id }}</td>
+            <td class="text-muted-foreground">{{ r.m.created_at|date:"Y-m-d" }}</td>
+          </tr>
+        {% empty %}<tr><td colspan="5" class="py-8 text-center text-muted-foreground">No memberships.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {# --- charts --- #}
+  <div class="mb-6 grid gap-4 lg:grid-cols-2">
+    {% include "_chart.html" with title="Access decisions / day" id="c-access" cfg=charts.access only %}
+    {% include "_chart.html" with title="Actions (Identity audit) / day" id="c-activity" cfg=charts.activity only %}
+    {% include "_chart.html" with title="AI credits / day" id="c-ai" cfg=charts.ai_cost only %}
+    {% include "_chart.html" with title="Document uploads / day" id="c-uploads" cfg=charts.uploads only %}
+  </div>
+
+  {# --- details --- #}
+  <div class="mb-6 grid gap-4 lg:grid-cols-3">
+    <div class="card p-6 text-sm">
+      <h2 class="card-title mb-4">Access denials ({{ days }}d)</h2>
+      {% if access %}
+        <p class="mb-2 text-muted-foreground">Last access check: {% if access.last %}{{ access.last|timesince }} ago{% else %}never{% endif %}</p>
+        {% for action, n in access.deny_by_action.items %}
+          <div class="flex justify-between border-t py-1"><span>{{ action }}</span><span>{{ n }}</span></div>
+        {% empty %}<p class="text-muted-foreground/70">No denials.</p>{% endfor %}
+      {% else %}<p class="text-muted-foreground/70">Unavailable.</p>{% endif %}
+    </div>
+    <div class="card p-6 text-sm">
+      <h2 class="card-title mb-4">AI ({{ days }}d)</h2>
+      {% if ai %}
+        <dl class="grid grid-cols-2 gap-y-1">
+          <dt class="text-muted-foreground">Tokens</dt><dd>{{ ai.window.prompt|default:0 }} in / {{ ai.window.completion|default:0 }} out</dd>
+          <dt class="text-muted-foreground">Agent sessions</dt><dd>{{ ai.sessions }}</dd>
+        </dl>
+        <h3 class="mt-3 mb-1 text-muted-foreground">By feature (credits)</h3>
+        {% for f, usd in ai.by_feature.items %}<span class="mr-2">{{ f|default:"?" }}: {{ usd|credits }}</span>{% empty %}<span class="text-muted-foreground/70">none</span>{% endfor %}
+        <h3 class="mt-3 mb-1 text-muted-foreground">Plan runs</h3>
+        {% for s, n in ai.plan_runs.items %}<span class="mr-2">{{ s|default:"?"|lower }}: {{ n }}</span>{% empty %}<span class="text-muted-foreground/70">none</span>{% endfor %}
+      {% else %}<p class="text-muted-foreground/70">Unavailable.</p>{% endif %}
+    </div>
+    <div class="card p-6 text-sm">
+      <h2 class="card-title mb-4">Notifications</h2>
+      {% if notes %}
+        {% for ch, n in notes.by_channel.items %}<div class="flex justify-between border-t py-1"><span>{{ ch|default:"?" }}</span><span>{{ n }}</span></div>{% empty %}<p class="text-muted-foreground/70">None.</p>{% endfor %}
+      {% else %}<p class="text-muted-foreground/70">Unavailable.</p>{% endif %}
+    </div>
+  </div>
+
+  {# --- audit --- #}
+  <div class="grid gap-4 lg:grid-cols-2">
+    <div class="card overflow-x-auto">
+      <h2 class="card-title px-6 py-4">Actions by this user</h2>
+      <table class="data-table">
+        <thead><tr><th>When</th><th>Action</th><th>Target</th></tr></thead>
+        <tbody>
+          {% for a in actions_by %}
+            <tr><td class="text-muted-foreground">{{ a.created_at|date:"Y-m-d H:i" }}</td><td>{{ a.action }}</td>
+              <td>{{ a.target_type|default:"—" }} <span class="font-mono text-xs text-muted-foreground">{{ a.target_id|default:"" }}</span></td></tr>
+          {% empty %}<tr><td colspan="3" class="py-8 text-center text-muted-foreground">None recorded.</td></tr>{% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div class="card overflow-x-auto">
+      <h2 class="card-title px-6 py-4">Changes to this user</h2>
+      <table class="data-table">
+        <thead><tr><th>When</th><th>Action</th><th>By member</th></tr></thead>
+        <tbody>
+          {% for a in changes_to %}
+            <tr><td class="text-muted-foreground">{{ a.created_at|date:"Y-m-d H:i" }}</td><td>{{ a.action }} {{ a.target_type|default:""|lower }}</td>
+              <td class="font-mono text-xs text-muted-foreground">{{ a.member_id|default:"system" }}</td></tr>
+          {% empty %}<tr><td colspan="3" class="py-8 text-center text-muted-foreground">None recorded.</td></tr>{% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+{% endblock %}

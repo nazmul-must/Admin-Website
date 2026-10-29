@@ -1,0 +1,8 @@
+<div class="card p-6 {{ class }}">
+  <h3 class="card-title mb-4">{{ title }}</h3>
+  {% if cfg %}
+    <div class="relative h-64">{{ cfg|json_script:id }}<canvas data-chart="{{ id }}"></canvas></div>
+  {% else %}
+    <div class="flex h-64 items-center justify-center text-sm text-muted-foreground">No data</div>
+  {% endif %}
+</div>

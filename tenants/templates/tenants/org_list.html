@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% load admin_extras %}
+{% block title %}Organizations · Pro3AI Admin{% endblock %}
+{% block content %}
+  <div class="mb-6 flex flex-wrap items-end justify-between gap-4 pb-4">
+    <h1 class="page-title">Organizations</h1>
+    <form class="flex flex-wrap gap-2" hx-get="{% url 'org-list' %}" hx-target="#org-table"
+          hx-trigger="input changed delay:300ms from:input, change from:select" hx-push-url="true">
+      <div class="relative">
+        <i data-lucide="search" class="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"></i>
+        <input type="search" name="q" value="{{ q }}" placeholder="Name, subdomain or ID"
+               class="input w-72 pl-10">
+      </div>
+      <select name="tier" class="input">
+        <option value="">All tiers</option>
+        {% for key, label in tiers %}<option value="{{ key }}" {% if key == tier %}selected{% endif %}>{{ label }}</option>{% endfor %}
+      </select>
+      <select name="status" class="input">
+        <option value="">All statuses</option>
+        {% for s in statuses %}<option value="{{ s }}" {% if s == status %}selected{% endif %}>{{ s|lower|capfirst }}</option>{% endfor %}
+      </select>
+    </form>
+  </div>
+
+  {% partialdef org-table inline %}
+  <div id="org-table" class="card overflow-x-auto">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Organization</th>
+          <th>Tier</th>
+          <th>Status</th>
+          <th class="text-right">Users</th>
+          <th class="text-right">Programmes</th>
+          <th title="AI credits used this calendar month vs allowance per billing period">AI credits (MTD)</th>
+          <th class="text-right">Docs</th>
+          <th>Last activity</th>
+          <th>Signed up</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in rows %}
+          <tr>
+            <td>
+              <a href="{% url 'org-detail' r.org.id %}" class="link">{{ r.org.name }}</a>
+              <div class="text-xs text-muted-foreground">{{ r.org.org_type|lower|capfirst }}{% if r.org.subdomain %} · {{ r.org.subdomain }}{% endif %}</div>
+            </td>
+            <td>{{ r.tier }}</td>
+            <td>
+              {% if r.sub %}<span class="badge {{ r.sub.status|status_class }}">{{ r.sub.status|lower|capfirst }}</span>
+                {% if r.sub.cancel_at_period_end %}<span class="ml-1 text-xs text-destructive">cancelling</span>{% endif %}
+              {% else %}—{% endif %}
+            </td>
+            <td class="text-right">{{ r.users }}{% if r.user_limit %} <span class="text-muted-foreground/70">/ {{ r.user_limit }}</span>{% endif %}</td>
+            <td class="text-right">{{ r.programmes }}{% if r.programme_limit %} <span class="text-muted-foreground/70">/ {{ r.programme_limit }}</span>{% endif %}</td>
+            <td>
+              <div class="flex items-center gap-2">
+                <span class="w-10 text-right">{{ r.ai_usd|credits }}</span>
+                {% if r.ai_pct is not None %}
+                  <div class="h-1.5 w-20 rounded-full bg-secondary"><div class="h-1.5 rounded-full {{ r.ai_pct|pct_class }}" style="width: {% if r.ai_pct > 100 %}100{% else %}{{ r.ai_pct }}{% endif %}%"></div></div>
+                  <span class="text-xs text-muted-foreground">{{ r.ai_pct }}%</span>
+                {% else %}<span class="text-xs text-muted-foreground/70">unlimited</span>{% endif %}
+              </div>
+            </td>
+            <td class="text-right">{{ r.docs }}</td>
+            <td class="text-muted-foreground">{% if r.last_seen %}{{ r.last_seen|timesince }} ago{% else %}—{% endif %}</td>
+            <td class="text-muted-foreground">{{ r.org.created_at|date:"Y-m-d" }}</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="9" class="py-8 text-center text-muted-foreground">No organizations match.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <div class="border-t px-6 py-3 text-xs text-muted-foreground">{{ rows|length }} organization{{ rows|length|pluralize }}</div>
+  </div>
+  {% endpartialdef %}
+{% endblock %}

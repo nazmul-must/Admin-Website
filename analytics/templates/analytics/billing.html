@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% load admin_extras %}
+{% block title %}Billing · Pro3AI Admin{% endblock %}
+{% block content %}
+  {% include "analytics/_header.html" with heading="Billing & subscriptions" blurb="Prices live in Stripe; this shows subscription state, renewals and webhook traffic." %}
+
+  <div class="mb-6 grid grid-cols-2 gap-4 md:grid-cols-5">
+    {% include "_kpi.html" with label="Subscriptions" value=subs|length only %}
+    {% include "_kpi.html" with label="Paid & active" value=paid only %}
+    {% include "_kpi.html" with label="Enterprise" value=enterprise only %}
+    {% include "_kpi.html" with label="Linked to Stripe" value=stripe_linked only %}
+    {% include "_kpi.html" with label="Seats" value=seats only %}
+  </div>
+
+  <div class="mb-6 grid gap-4 lg:grid-cols-3">
+    {% include "_chart.html" with title="Subscriptions by tier" id="c-tier" cfg=charts.tier only %}
+    {% include "_chart.html" with title="Stripe webhook events / day" id="c-events" cfg=charts.events only %}
+    {% include "_chart.html" with title="Stripe events by type (window)" id="c-types" cfg=charts.types only %}
+  </div>
+
+  <div class="mb-6 grid gap-4 lg:grid-cols-2">
+    <div class="card overflow-x-auto">
+      <h2 class="card-title px-6 py-4">Tier × status</h2>
+      <table class="data-table">
+        <thead><tr><th>Tier</th>{% for s in statuses %}<th class="text-right">{{ s|lower|capfirst }}</th>{% endfor %}</tr></thead>
+        <tbody>{% for r in matrix %}<tr><td>{{ r.tier }}</td>{% for n in r.cells %}<td class="text-right">{{ n }}</td>{% endfor %}</tr>{% empty %}<tr><td class="py-8 text-center text-muted-foreground">No subscriptions.</td></tr>{% endfor %}</tbody>
+      </table>
+    </div>
+    <div class="card p-6">
+      <h2 class="card-title mb-4">Problems</h2>
+      {% for s in problems %}
+        <div class="flex justify-between border-t py-2 text-sm">
+          <a href="{% url 'org-detail' s.org_id %}" class="link">{{ names|get:s.org_id|default:s.org_id }}</a>
+          <span class="badge {{ s.status|status_class }}">{{ s.status|lower }}{% if s.cancel_at_period_end %} · cancelling{% endif %}</span>
+        </div>
+      {% empty %}<p class="text-sm text-muted-foreground">No billing problems.</p>{% endfor %}
+    </div>
+  </div>
+
+  <div class="mb-6 grid gap-4 lg:grid-cols-2">
+    <div class="card p-6">
+      <h2 class="card-title mb-4">Renewals in the next 30 days</h2>
+      {% for s in renewals %}
+        <div class="flex justify-between border-t py-2 text-sm">
+          <a href="{% url 'org-detail' s.org_id %}" class="link">{{ names|get:s.org_id|default:s.org_id }}</a>
+          <span class="text-muted-foreground">{{ s.current_period_end|date:"Y-m-d" }} · {{ s.tier|lower }}{% if s.cancel_at_period_end %} · <span class="text-destructive">cancels</span>{% endif %}</span>
+        </div>
+      {% empty %}<p class="text-sm text-muted-foreground">None.</p>{% endfor %}
+    </div>
+    <div class="card p-6">
+      <h2 class="card-title mb-4">Custom limits (overrides)</h2>
+      {% for s in overrides %}
+        <div class="flex justify-between border-t py-2 text-sm">
+          <a href="{% url 'org-detail' s.org_id %}" class="link">{{ names|get:s.org_id|default:s.org_id }}</a>
+          <span class="text-muted-foreground">
+            {% if s.programme_limit_override is not None %}programmes={{ s.programme_limit_override }} {% endif %}
+            {% if s.user_limit_override is not None %}users={{ s.user_limit_override }} {% endif %}
+            {% if s.ai_credit_allowance_override_usd is not None %}AI={{ s.ai_credit_allowance_override_usd|credits }} credits{% endif %}
+          </span>
+        </div>
+      {% empty %}<p class="text-sm text-muted-foreground">No overrides.</p>{% endfor %}
+    </div>
+  </div>
+
+  {% if ev %}
+    <div class="card overflow-x-auto">
+      <h2 class="card-title px-6 py-4">Latest Stripe events <span class="text-sm font-normal text-muted-foreground">({{ ev.unprocessed }} never processed)</span></h2>
+      <table class="data-table">
+        <thead><tr><th>Received</th><th>Type</th><th>Outcome</th><th>Processed</th><th>Stripe ID</th></tr></thead>
+        <tbody>
+          {% for e in ev.latest %}
+            <tr>
+              <td class="text-muted-foreground">{{ e.created_at|date:"Y-m-d H:i" }}</td>
+              <td>{{ e.event_type }}</td>
+              <td>{{ e.outcome|default:"—" }}</td>
+              <td>{% if e.processed_at %}{{ e.processed_at|date:"Y-m-d H:i" }}{% else %}<span class="text-amber-700">no</span>{% endif %}</td>
+              <td class="font-mono text-xs text-muted-foreground">{{ e.stripe_event_id }}</td>
+            </tr>
+          {% empty %}<tr><td colspan="5" class="py-8 text-center text-muted-foreground">No events.</td></tr>{% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% endif %}
+{% endblock %}

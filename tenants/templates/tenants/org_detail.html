@@ -1,0 +1,210 @@
+{% extends "base.html" %}
+{% load admin_extras %}
+{% block title %}{{ org.name }} · Pro3AI Admin{% endblock %}
+{% block crumbs %}
+  <li><i data-lucide="chevron-right" class="size-4 text-muted-foreground/40"></i></li>
+  <li><a href="{% url 'org-list' %}" class="rounded-md px-2 py-1 text-muted-foreground hover:bg-accent/50 hover:text-primary">Organizations</a></li>
+  <li><i data-lucide="chevron-right" class="size-4 text-muted-foreground/40"></i></li>
+  <li class="px-2 py-1 font-semibold text-foreground">{{ org.name }}</li>
+{% endblock %}
+{% block content %}
+
+  {# --- header --- #}
+  <div class="mb-6 flex flex-wrap items-start justify-between gap-4">
+    <div>
+      <h1 class="page-title">{{ org.name }}</h1>
+      <div class="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+        <span class="badge bg-muted text-foreground">{{ org.org_type|lower|capfirst }}</span>
+        <span class="badge border-primary/30 text-primary">{{ tier }}</span>
+        {% if sub %}<span class="badge {{ sub.status|status_class }}">{{ sub.status|lower|capfirst }}</span>{% endif %}
+        {% if org.subdomain %}<span>{{ org.subdomain }}</span>{% endif %}
+        <span>· signed up {{ org.created_at|date:"Y-m-d" }} ({{ org.created_at|timesince }} ago)</span>
+      </div>
+      <div class="mt-1 font-mono text-xs text-muted-foreground">{{ org.id }}</div>
+      {% if parent or children %}
+        <div class="mt-1 text-sm text-muted-foreground">
+          {% if parent %}Parent: <a class="link" href="{% url 'org-detail' parent.id %}">{{ parent.name }}</a>{% endif %}
+          {% if children %}Children: {% for c in children %}<a class="link" href="{% url 'org-detail' c.id %}">{{ c.name }}</a>{% if not forloop.last %}, {% endif %}{% endfor %}{% endif %}
+        </div>
+      {% endif %}
+    </div>
+    {% include "_window.html" %}
+  </div>
+
+  {# --- KPIs --- #}
+  <div class="mb-6 grid grid-cols-2 gap-4 md:grid-cols-4 xl:grid-cols-7">
+    {% include "_kpi.html" with label="Users" value=user_count sub=owners|stringformat:"d"|add:" owner(s)" only %}
+    {% include "_kpi.html" with label="Memberships" value=members|length sub=external|stringformat:"d"|add:" external" only %}
+    {% include "_kpi.html" with label="Programmes" value=programmes|length only %}
+    {% if docs %}{% include "_kpi.html" with label="Documents" value=docs.count sub=docs.bytes|filesizeformat only %}{% endif %}
+    {% if plan %}{% include "_kpi.html" with label="Work items" value=plan.count only %}{% endif %}
+    {% if ai %}{% include "_kpi.html" with label="AI credits (period)" value=ai.period.cost|credits sub=ai.period.calls|stringformat:"d"|add:" calls" only %}{% endif %}
+    {% if notes %}{% include "_kpi.html" with label="Notifications" value=notes.total sub=notes.unread|stringformat:"d"|add:" unread" only %}{% endif %}
+  </div>
+
+  {# --- subscription + limits --- #}
+  <div class="mb-6 grid gap-4 lg:grid-cols-2">
+    <div class="card p-6">
+      <h2 class="card-title mb-4">Subscription &amp; billing</h2>
+      {% if sub %}
+        <dl class="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+          <dt class="text-muted-foreground">Tier</dt><dd>{{ tier }}</dd>
+          <dt class="text-muted-foreground">Status</dt><dd>{{ sub.status|lower|capfirst }}{% if sub.cancel_at_period_end %} <span class="text-destructive">· cancels at period end</span>{% endif %}</dd>
+          <dt class="text-muted-foreground">Current period</dt>
+          <dd>{% if sub.current_period_start %}{{ sub.current_period_start|date:"Y-m-d" }} → {{ sub.current_period_end|date:"Y-m-d" }}
+              {% if sub.current_period_end %}<span class="text-muted-foreground">({{ sub.current_period_end|timeuntil }} left)</span>{% endif %}{% else %}—{% endif %}</dd>
+          <dt class="text-muted-foreground">Seats</dt><dd>{{ sub.seats|default:"—" }}</dd>
+          <dt class="text-muted-foreground">Stripe customer</dt><dd class="font-mono text-xs">{{ sub.stripe_customer_id|default:"—" }}</dd>
+          <dt class="text-muted-foreground">Stripe subscription</dt><dd class="font-mono text-xs">{{ sub.stripe_subscription_id|default:"—" }}</dd>
+          <dt class="text-muted-foreground">Overrides</dt>
+          <dd>
+            {% if sub.programme_limit_override is not None %}programmes={{ sub.programme_limit_override }} {% endif %}
+            {% if sub.user_limit_override is not None %}users={{ sub.user_limit_override }} {% endif %}
+            {% if sub.ai_credit_allowance_override_usd is not None %}AI=${{ sub.ai_credit_allowance_override_usd }}{% endif %}
+            {% if sub.programme_limit_override is None and sub.user_limit_override is None and sub.ai_credit_allowance_override_usd is None %}none{% endif %}
+          </dd>
+          <dt class="text-muted-foreground">Last updated</dt><dd>{{ sub.updated_at|date:"Y-m-d H:i" }}</dd>
+        </dl>
+      {% else %}
+        <p class="text-sm text-muted-foreground">No subscription record.</p>
+      {% endif %}
+    </div>
+    <div class="card p-6">
+      <h2 class="card-title mb-4">Limits vs usage</h2>
+      <div class="space-y-4">
+        {% for u in usage %}
+          <div>
+            <div class="mb-1 flex justify-between text-sm">
+              <span>{{ u.label }}</span>
+              <span class="text-muted-foreground">{{ u.used }} / {% if u.limit is None %}unlimited{% else %}{{ u.limit }}{% endif %}{% if u.pct is not None %} · {{ u.pct }}%{% endif %}</span>
+            </div>
+            <div class="h-2 rounded-full bg-secondary">
+              {% if u.pct is not None %}<div class="h-2 rounded-full {{ u.pct|pct_class }}" style="width: {% if u.pct > 100 %}100{% else %}{{ u.pct }}{% endif %}%"></div>{% endif %}
+            </div>
+          </div>
+        {% endfor %}
+        {% if ai %}<p class="text-xs text-muted-foreground">AI period since {{ period_start|date:"Y-m-d" }}. 1 credit = $0.01.</p>{% endif %}
+      </div>
+    </div>
+  </div>
+
+  {# --- charts --- #}
+  <div class="mb-6 grid gap-4 lg:grid-cols-2">
+    {% include "_chart.html" with title="Activity (Identity audit events / day)" id="c-activity" cfg=charts.activity only %}
+    {% if ai %}{% include "_chart.html" with title="AI credits / day" id="c-ai" cfg=charts.ai_cost only %}{% endif %}
+    {% if access %}{% include "_chart.html" with title="Access decisions / day" id="c-access" cfg=charts.access only %}{% endif %}
+    {% if docs %}{% include "_chart.html" with title="Documents created / day" id="c-docs" cfg=charts.docs only %}{% endif %}
+    {% if ai %}{% include "_chart.html" with title="AI cost by feature (selected window)" id="c-ai-feature" cfg=charts.ai_feature only %}{% endif %}
+    {% include "_chart.html" with title="Work items by type" id="c-work" cfg=charts.work_types only %}
+  </div>
+
+  {# --- AI + access details --- #}
+  <div class="mb-6 grid gap-4 lg:grid-cols-3">
+    <div class="card p-6 text-sm">
+      <h2 class="card-title mb-4">AI</h2>
+      {% if ai %}
+        <dl class="grid grid-cols-2 gap-y-1">
+          <dt class="text-muted-foreground">Lifetime credits</dt><dd>{{ ai.lifetime.cost|credits }} ({{ ai.lifetime.calls }} calls)</dd>
+          <dt class="text-muted-foreground">Period tokens</dt><dd>{{ ai.period.prompt|default:0 }} in / {{ ai.period.completion|default:0 }} out</dd>
+          <dt class="text-muted-foreground">Agent sessions</dt><dd>{{ ai.sessions }}</dd>
+          <dt class="text-muted-foreground">OpenRouter key</dt>
+          <dd>{% if ai.key %}{% if ai.key.disabled %}<span class="text-destructive">disabled</span>{% else %}active{% endif %} · ${{ ai.key.last_usage_usd|default:0|floatformat:2 }} / ${{ ai.key.limit_usd|default:"∞" }} · synced {{ ai.key.synced_at|timesince|default:"never" }}{% else %}none{% endif %}</dd>
+        </dl>
+        <h3 class="mt-3 mb-1 text-muted-foreground">Plan runs</h3>
+        {% for s, n in ai.plan_runs.items %}<span class="mr-2">{{ s|default:"?"|lower }}: {{ n }}</span>{% empty %}<span class="text-muted-foreground/70">none</span>{% endfor %}
+        <h3 class="mt-3 mb-1 text-muted-foreground">Document ingestion</h3>
+        {% for s, n in ai.ingestion.items %}<span class="mr-2">{{ s|default:"?"|lower }}: {{ n }}</span>{% empty %}<span class="text-muted-foreground/70">none</span>{% endfor %}
+      {% else %}<p class="text-muted-foreground/70">Unavailable.</p>{% endif %}
+    </div>
+    <div class="card p-6 text-sm">
+      <h2 class="card-title mb-4">Access denials ({{ days }}d)</h2>
+      {% if access %}
+        <p class="mb-2 text-muted-foreground">Last access check: {% if access.last %}{{ access.last|timesince }} ago{% else %}never{% endif %}</p>
+        {% for action, n in access.deny_by_action.items %}
+          <div class="flex justify-between border-t py-1"><span>{{ action }}</span><span>{{ n }}</span></div>
+        {% empty %}<p class="text-muted-foreground/70">No denials.</p>{% endfor %}
+      {% else %}<p class="text-muted-foreground/70">Unavailable.</p>{% endif %}
+    </div>
+    <div class="card p-6 text-sm">
+      <h2 class="card-title mb-4">Planning health</h2>
+      {% if plan %}
+        <h3 class="mb-1 text-muted-foreground">RAG</h3>
+        {% for rag, n in plan.by_rag.items %}<span class="mr-2">{{ rag|default:"none" }}: {{ n }}</span>{% empty %}<span class="text-muted-foreground/70">no work items</span>{% endfor %}
+      {% else %}<p class="text-muted-foreground/70">Unavailable.</p>{% endif %}
+    </div>
+  </div>
+
+  {# --- programmes --- #}
+  <div class="mb-6 card overflow-x-auto">
+    <h2 class="card-title px-6 py-4">Programmes</h2>
+    <table class="data-table">
+      <thead><tr>
+        <th>Name</th><th>Active</th><th>Currency</th>
+        <th>Start</th><th class="text-right">Members</th>
+        <th class="text-right">Work items</th><th class="text-right">Documents</th><th>Created</th>
+      </tr></thead>
+      <tbody>
+        {% for r in programme_rows %}
+          <tr>
+            <td class="font-medium">{{ r.p.name }}</td>
+            <td>{{ r.p.is_active|yesno:"yes,no,—" }}</td>
+            <td>{{ r.p.currency|default:"—" }}</td>
+            <td>{{ r.p.start_date|date:"Y-m-d"|default:"—" }}</td>
+            <td class="text-right">{{ r.members }}</td>
+            <td class="text-right">{{ r.work_items|default_if_none:"?" }}</td>
+            <td class="text-right">{{ r.docs|default_if_none:"?" }}</td>
+            <td class="text-muted-foreground">{{ r.p.created_at|date:"Y-m-d" }}</td>
+          </tr>
+        {% empty %}<tr><td colspan="8" class="py-8 text-center text-muted-foreground">No programmes.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {# --- members --- #}
+  <div class="mb-6 card overflow-x-auto">
+    <h2 class="card-title px-6 py-4">Memberships</h2>
+    <table class="data-table">
+      <thead><tr>
+        <th>User</th><th>Member</th><th>Scope</th>
+        <th>Flags</th><th>Email verified</th><th>MFA</th><th>Joined</th>
+      </tr></thead>
+      <tbody>
+        {% for p in people %}
+          <tr>
+            <td>{% if p.user %}{% include "_user.html" with user=p.user name=p.name email=p.email decrypted=p.decrypted link=True only %}{% else %}<span class="font-mono text-xs">{{ p.m.user_id }}</span>{% endif %}</td>
+            <td class="font-mono text-xs text-muted-foreground">{{ p.m.id }}</td>
+            <td>{{ p.scope }}</td>
+            <td class="space-x-1 text-xs">
+              {% if p.m.is_owner %}<span class="badge bg-secondary text-secondary-foreground">owner</span>{% endif %}
+              {% if p.m.is_external %}<span class="badge border-amber-200 bg-amber-50 text-amber-700">external</span>{% endif %}
+              {% if not p.m.is_org_active %}<span class="badge border-red-200 bg-red-50 text-destructive">inactive</span>{% endif %}
+            </td>
+            <td>{{ p.email_verified|yesno:"yes,no,—" }}</td>
+            <td>{{ p.mfa|default:"off" }}</td>
+            <td class="text-muted-foreground">{{ p.m.created_at|date:"Y-m-d" }}</td>
+          </tr>
+        {% empty %}<tr><td colspan="7" class="py-8 text-center text-muted-foreground">No members.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {# --- audit --- #}
+  <div class="card overflow-x-auto">
+    <h2 class="card-title px-6 py-4">Recent activity (Identity audit log)</h2>
+    <table class="data-table">
+      <thead><tr>
+        <th>When</th><th>Action</th><th>Target</th><th>By member</th>
+      </tr></thead>
+      <tbody>
+        {% for a in audit %}
+          <tr>
+            <td class="text-muted-foreground">{{ a.created_at|date:"Y-m-d H:i" }}</td>
+            <td>{{ a.action }}</td>
+            <td>{{ a.target_type|default:"—" }} <span class="font-mono text-xs text-muted-foreground">{{ a.target_id|default:"" }}</span></td>
+            <td class="font-mono text-xs text-muted-foreground">{{ a.member_id|default:"system" }}</td>
+          </tr>
+        {% empty %}<tr><td colspan="4" class="py-8 text-center text-muted-foreground">No activity recorded.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endblock %}

@@ -1,0 +1,20 @@
+NAV = [
+    ('overview', 'Overview', 'layout-dashboard', {'overview'}),
+    ('org-list', 'Organizations', 'building-2', {'org-list', 'org-detail'}),
+    ('user-list', 'Users', 'users', {'user-list', 'user-detail'}),
+    ('growth', 'Growth', 'trending-up', {'growth'}),
+    ('billing', 'Billing', 'credit-card', {'billing'}),
+    ('ai-usage', 'AI usage', 'sparkles', {'ai-usage'}),
+    ('engagement', 'Engagement', 'activity', {'engagement'}),
+    ('access', 'Access', 'shield-check', {'access'}),
+]
+
+
+def nav(request):
+    current = request.resolver_match.url_name if request.resolver_match else None
+    items = [(name, label, icon, current in active) for name, label, icon, active in NAV]
+    return {
+        'nav': items,
+        # Breadcrumb label for the current section; detail pages extend it in their template.
+        'crumb': next((label for _, label, _, active in items if active), None),
+    }

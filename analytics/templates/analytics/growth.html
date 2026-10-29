@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Growth · Pro3AI Admin{% endblock %}
+{% block content %}
+  {% include "analytics/_header.html" with heading="Growth & activation" blurb="Signups, cumulative growth and how far organizations get after signing up." %}
+
+  {% if idn %}
+    <div class="mb-6 grid grid-cols-2 gap-4 md:grid-cols-4">
+      {% include "_kpi.html" with label="Users" value=idn.user_total only %}
+      {% include "_kpi.html" with label="Email verified" value=idn.verified sub=idn.user_total|stringformat:"d"|add:" users" only %}
+      {% include "_kpi.html" with label="MFA enabled" value=idn.mfa sub=idn.user_total|stringformat:"d"|add:" users" only %}
+      {% include "_kpi.html" with label="Organizations" value=idn.all_orgs|length only %}
+    </div>
+  {% endif %}
+
+  <div class="mb-6 grid gap-4 lg:grid-cols-2">
+    {% include "_chart.html" with title="New per day" id="c-signups" cfg=charts.signups only %}
+    {% include "_chart.html" with title="Cumulative" id="c-cumulative" cfg=charts.cumulative only %}
+    {% include "_chart.html" with title="Activation funnel (organizations)" id="c-funnel" cfg=charts.funnel only %}
+    {% include "_chart.html" with title="Organization types" id="c-types" cfg=charts.types only %}
+  </div>
+
+  <div class="card overflow-x-auto">
+    <table class="data-table">
+      <thead><tr><th>Activation step</th><th class="text-right">Organizations</th><th class="text-right">% of signups</th></tr></thead>
+      <tbody>
+        {% for f in funnel %}
+          <tr><td>{{ f.label }}</td><td class="text-right">{{ f.n }}</td><td class="text-right">{{ f.pct|default_if_none:"—" }}%</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endblock %}

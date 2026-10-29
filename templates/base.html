@@ -1,0 +1,98 @@
+{% load static %}<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Pro3AI Admin{% endblock %}</title>
+  <link rel="icon" href="{% static 'images/Logo_icon.svg' %}" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap">
+  {# ponytail: CDN builds for local dev; swap for the Tailwind standalone CLI build and vendored JS before deploying. #}
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.1.13"
+          integrity="sha384-YJvHoUr6w1FlD9gzD41c9ztiiG5wIJ9fhnawEIqr4iNzJgEpeI++XwO6yjHdcDte"
+          crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.6/dist/htmx.min.js"
+          integrity="sha384-Akqfrbj/HpNVo8k11SXBb6TlBWmXXlYQrCSqEWmyKJe+hDm3Z/B2WVG4smwBkRVm"
+          crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.umd.min.js"
+          integrity="sha384-XcdcwHqIPULERb2yDEM4R0XaQKU3YnDsrTmjACBZyfdVVqjh6xQ4/DCMd7XLcA6Y"
+          crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/lucide@0.562.0/dist/umd/lucide.min.js"
+          integrity="sha384-FmRlymRnpgjuKyAnwH4DftRjl+RqHOlfcw9k4xcpPyovclg/2RZRrvw7qe1koVCP"
+          crossorigin="anonymous"></script>
+  <script src="{% static 'js/charts.js' %}" defer></script>
+  {% include "_theme.html" %}
+</head>
+<body>
+  {% block body %}
+  <header class="fixed z-30 h-20 w-full bg-secondary-foreground px-6 py-4 text-white shadow-md">
+    <div class="flex h-full items-center justify-between">
+      <a href="{% url 'overview' %}" class="flex items-center gap-3 lg:w-70">
+        <img src="{% static 'images/logo-pro3ai.svg' %}" alt="Pro3AI" class="h-10 object-contain md:h-12">
+        <span class="text-xs font-semibold uppercase tracking-wider text-white/80">Admin</span>
+      </a>
+      {% if user.is_authenticated %}
+        <form method="post" action="{% url 'admin:logout' %}" class="flex items-center gap-2 md:gap-3">
+          {% csrf_token %}
+          <span class="hidden text-sm font-medium md:inline">{{ user.get_username }}</span>
+          <span class="flex size-8 items-center justify-center rounded-full bg-white text-xs font-bold text-secondary-foreground md:size-9">{{ user.get_username|slice:":2"|upper }}</span>
+          <button class="flex size-8 cursor-pointer items-center justify-center rounded-full hover:bg-white/10 md:size-9" title="Log Out" aria-label="Log Out">
+            <i data-lucide="log-out" class="size-5"></i>
+          </button>
+        </form>
+      {% endif %}
+    </div>
+  </header>
+
+  <div class="flex pt-20">
+    {% if user.is_authenticated %}
+      <aside class="fixed top-20 left-0 z-30 flex h-[calc(100vh-5rem)] w-50 flex-col border-r border-sidebar-border bg-sidebar shadow-sm">
+        <nav class="flex flex-1 flex-col space-y-1.5 overflow-y-auto px-3 py-4">
+          {% for name, label, icon, active in nav %}
+            {% url name as href %}
+            <a href="{{ href }}" {% if active %}aria-current="page"{% endif %}
+               class="group relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium leading-tight transition-all duration-300 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground {% if active %}text-sidebar-primary{% else %}text-sidebar-foreground{% endif %}">
+              {% if active %}<span class="absolute top-2 bottom-2 left-0 w-1 rounded-r-full bg-sidebar-primary"></span>{% endif %}
+              <i data-lucide="{{ icon }}" class="size-5 shrink-0 {% if active %}text-sidebar-primary{% else %}text-muted-foreground group-hover:text-sidebar-accent-foreground{% endif %}"></i>
+              <span>{{ label }}</span>
+            </a>
+            {% if forloop.first %}<div class="mx-2 my-2 h-px bg-sidebar-border"></div>{% endif %}
+          {% endfor %}
+        </nav>
+      </aside>
+    {% endif %}
+
+    <main class="flex min-w-0 grow flex-col gap-6 px-12 py-8 {% if user.is_authenticated %}ml-50{% endif %}">
+      <nav aria-label="Breadcrumb" class="flex items-center text-sm font-medium">
+        <ol class="flex items-center space-x-1.5 md:space-x-2">
+          <li><a href="{% url 'overview' %}" class="flex rounded-md px-2 py-1 text-muted-foreground hover:bg-accent/50 hover:text-primary" aria-label="Overview"><i data-lucide="house" class="size-3.5"></i></a></li>
+          {% block crumbs %}
+            {% if crumb %}
+              <li><i data-lucide="chevron-right" class="size-4 text-muted-foreground/40"></i></li>
+              <li class="px-2 py-1 font-semibold text-foreground">{{ crumb }}</li>
+            {% endif %}
+          {% endblock %}
+        </ol>
+      </nav>
+
+      <div>
+        {% if down %}
+          <div class="mb-6 flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            <i data-lucide="circle-alert" class="size-4 shrink-0"></i>
+            <span><strong>Unavailable:</strong> {{ down|join:", " }}. Figures from these services are missing below.</span>
+          </div>
+        {% endif %}
+        {% block content %}{% endblock %}
+      </div>
+    </main>
+  </div>
+
+  {% endblock %}
+
+  <script>
+    lucide.createIcons();
+    document.addEventListener('htmx:afterSwap', () => lucide.createIcons());
+  </script>
+</body>
+</html>
