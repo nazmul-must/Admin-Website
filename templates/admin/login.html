@@ -26,7 +26,9 @@
 
         <form method="post" action="{{ app_path }}" class="flex w-full flex-col gap-4">
           {% csrf_token %}
-          <input type="hidden" name="next" value="{{ next }}">
+          {# Django admin defaults `next` to /admin/; land on the overview unless a page asked for a redirect. #}
+          {% url 'overview' as overview_url %}
+          <input type="hidden" name="next" value="{{ request.GET.next|default:overview_url }}">
           <div class="relative">
             <input id="id_username" name="username" type="text" value="{{ form.username.value|default:'' }}" placeholder=" "
                    autocomplete="username" autofocus required
