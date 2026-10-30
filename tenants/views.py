@@ -5,8 +5,6 @@ from analytics.charts import chart, ranked
 from servicedata.stats import Sources, labels, window
 from servicedata.tiers import CREDITS_PER_USD, tiers
 
-from servicedata import pii
-
 from .selectors import org_detail, org_rows, subscriptions
 from .user_selectors import user_detail, user_rows
 
@@ -17,13 +15,14 @@ def org_list(request):
     q = request.GET.get('q', '').strip()
     tier = request.GET.get('tier', '')
     status = request.GET.get('status', '')
+    subs = subscriptions(src)
     context = {
-        'rows': org_rows(src, q, tier, status),
+        'rows': org_rows(src, subs, q, tier, status),
         'q': q,
         'tier': tier,
         'status': status,
         'tiers': [(key.upper(), t.get('display_name', key)) for key, t in tiers().items()],
-        'statuses': sorted({s.status for s in subscriptions(src).values()}),
+        'statuses': sorted({s['status'] for s in subs.values()}),
     }
     template = 'tenants/org_list.html'
     if request.headers.get('HX-Request'):
@@ -64,7 +63,7 @@ def user_list(request):
     src = Sources()
     filters = {k: request.GET.get(k, '').strip() for k in ('q', 'org', 'verified', 'mfa')}
     rows, orgs = user_rows(src, **filters)
-    context = {'rows': rows, 'orgs': orgs, 'pii_enabled': pii.enabled(), **filters}
+    context = {'rows': rows, 'orgs': orgs, **filters}
     template = 'tenants/user_list.html'
     if request.headers.get('HX-Request'):
         template += '#user-table'
@@ -90,4 +89,4 @@ def user_detail_view(request, user_id):
     if d['docs']:
         charts['uploads'] = chart('bar', x, {'Document versions uploaded': d['docs']['daily']})
 
-    return src.render(request, 'tenants/user_detail.html', {**d, 'charts': charts, 'days': days, 'pii_enabled': pii.enabled()})
+    return src.render(request, 'tenants/user_detail.html', {**d, 'charts': charts, 'days': days})

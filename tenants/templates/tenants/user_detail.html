@@ -16,9 +16,8 @@
         <h1 class="page-title">{{ name }}</h1>
         <div class="text-muted-foreground">{{ email }}</div>
       {% else %}
-        <h1 class="font-mono text-lg" title="Encrypted name">{{ account.name_ciphertext|truncatechars:48 }}</h1>
-        <div class="font-mono text-sm text-muted-foreground" title="Encrypted email">{{ account.email_ciphertext|truncatechars:48 }}</div>
-        {% if not pii_enabled %}<p class="text-xs text-amber-700">Set MASTER_SECRET_KEY to decrypt.</p>{% endif %}
+        <h1 class="font-mono text-lg">{{ account.id }}</h1>
+        <p class="text-xs text-amber-700">Identity could not decrypt this user's name and email.</p>
       {% endif %}
       <div class="mt-2 flex flex-wrap items-center gap-2 text-sm">
         {% if account.email_verified %}<span class="badge bg-secondary text-secondary-foreground">email verified</span>{% else %}<span class="badge border-amber-200 bg-amber-50 text-amber-700">email not verified</span>{% endif %}

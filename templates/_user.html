@@ -1,8 +1,7 @@
-{# Expects: user, name, email, decrypted, [link] #}
+{# Expects: user, name, email, decrypted, [link]. decrypted=False: Identity could not decrypt; show the id. #}
 {% if decrypted %}
   {% if link %}<a href="{% url 'user-detail' user.id %}" class="link">{{ name }}</a>{% else %}<span class="font-medium">{{ name }}</span>{% endif %}
   <div class="text-xs text-muted-foreground">{{ email }}</div>
 {% else %}
-  {% if link %}<a href="{% url 'user-detail' user.id %}" class="link font-mono text-xs" title="Encrypted name">{{ user.name_ciphertext|truncatechars:28 }}</a>{% else %}<span class="font-mono text-xs" title="Encrypted name">{{ user.name_ciphertext|truncatechars:28 }}</span>{% endif %}
-  <div class="font-mono text-xs text-muted-foreground/70" title="Encrypted email">{{ user.email_ciphertext|truncatechars:28 }}</div>
+  {% if link %}<a href="{% url 'user-detail' user.id %}" class="link font-mono text-xs" title="Name not decryptable">{{ user.id }}</a>{% else %}<span class="font-mono text-xs" title="Name not decryptable">{{ user.id }}</span>{% endif %}
 {% endif %}

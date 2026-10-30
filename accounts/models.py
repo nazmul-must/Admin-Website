@@ -1,7 +1,7 @@
 """Employees and their roles.
 
 Employees are the people who sign in to this admin site. They are not Pro3AI users: those are
-the customers of the product, read from the Identity service (servicedata.models.User).
+the customers of the product, read from the Identity service through its admin queries (servicedata/rpc.py).
 
 Each role is a Django group holding these permissions:
 - Super Admin: `view_site` + `edit_site` + `manage_employees`: everything, including the

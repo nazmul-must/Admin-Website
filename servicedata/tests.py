@@ -1,42 +1,25 @@
-import base64
-import hashlib
-import uuid
+import json
+from datetime import date, datetime, timezone
+from unittest import mock
 
-from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives.ciphers.aead import AESGCM
-from cryptography.hazmat.primitives.kdf.hkdf import HKDF
-from django.db import DatabaseError
 from django.test import SimpleTestCase
 
-from admin.db_router import ServiceDatabaseRouter
-
-from .models import Organization, Subscription, User
-from .pii import reveal
-from .stats import Sources, cumulative, latest, pct
+from . import rpc, tiers
+from .stats import Sources, cumulative, day_range, fill, latest, pct, series
 from .tiers import limits
 
-
-class ServiceDatabaseRouterTests(SimpleTestCase):
-    router = ServiceDatabaseRouter()
-
-    def test_reads_go_to_owning_service(self):
-        self.assertEqual(self.router.db_for_read(Organization), 'identity')
-
-    def test_writes_are_refused(self):
-        with self.assertRaises(PermissionError):
-            self.router.db_for_write(Organization)
-
-    def test_never_migrates_service_dbs(self):
-        self.assertFalse(self.router.allow_migrate('identity', 'auth'))
-        self.assertFalse(self.router.allow_migrate('default', 'servicedata'))
-        self.assertIsNone(self.router.allow_migrate('default', 'auth'))
+TIERS = {'core': {'display_name': 'Core', 'programme_limit': 2, 'user_limit': None, 'ai_credit_allowance_usd': 1.0}}
 
 
 class LimitsTests(SimpleTestCase):
+    def setUp(self):
+        patcher = mock.patch.dict(tiers._cache, {'tiers': TIERS})
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
     def sub(self, **overrides):
-        fields = {'tier': 'CORE', 'programme_limit_override': None, 'user_limit_override': None,
-                  'ai_credit_allowance_override_usd': None, **overrides}
-        return Subscription(**fields)
+        return {'tier': 'CORE', 'programme_limit_override': None, 'user_limit_override': None,
+                'ai_credit_allowance_override_usd': None, **overrides}
 
     def test_tier_defaults(self):
         self.assertEqual(limits(self.sub()), {'programmes': 2, 'users': None, 'ai_usd': 1.0})
@@ -49,17 +32,30 @@ class LimitsTests(SimpleTestCase):
         self.assertEqual(limits(None), {'programmes': None, 'users': None, 'ai_usd': None})
 
 
+class TiersCacheTests(SimpleTestCase):
+    def test_identity_down_is_not_cached(self):
+        with mock.patch.dict(tiers._cache, clear=True), \
+                mock.patch.object(rpc, 'query', side_effect=[rpc.ServiceUnavailable('down'), TIERS]) as q:
+            self.assertEqual(tiers.tiers(), {})
+            self.assertEqual(tiers.tiers(), TIERS)
+            self.assertEqual(tiers.tiers(), TIERS)
+        self.assertEqual(q.call_count, 2)
+
+
 class StatsTests(SimpleTestCase):
-    def test_failed_source_degrades_once(self):
-        src, calls = Sources(), []
+    def test_failed_service_degrades_once(self):
+        src = Sources()
+        with mock.patch.object(rpc, 'query', side_effect=rpc.ServiceUnavailable('down')) as q:
+            self.assertEqual(src.query('agent', 'org_usage', 'fallback'), 'fallback')
+            self.assertEqual(src.query('agent', 'dashboard', 'again'), 'again')
+        self.assertEqual((q.call_count, src.down), (1, ['agent']))
 
-        def boom():
-            calls.append(1)
-            raise DatabaseError('down')
-
-        self.assertEqual(src.fetch('agent', boom, 'fallback'), 'fallback')
-        self.assertEqual(src.fetch('agent', boom, 'again'), 'again')
-        self.assertEqual((len(calls), src.down), (1, ['agent']))
+    def test_series_zero_fills_oldest_first(self):
+        days = day_range(3)
+        by_day = {days[0].isoformat(): 2, days[2].isoformat(): None, '1999-01-01': 9}
+        self.assertEqual(series(by_day, 3), [2, 0, 0])
+        self.assertEqual(fill({'d': {days[1].isoformat(): 4}}, 3, 'd'), {'d': [0, 4, 0]})
+        self.assertIsNone(fill(None, 3, 'd'))
 
     def test_pct_and_cumulative_and_latest(self):
         self.assertIsNone(pct(5, None))
@@ -68,26 +64,25 @@ class StatsTests(SimpleTestCase):
         self.assertEqual(latest({'a': 1, 'b': 5}, {'a': 3, 'b': None}), {'a': 3, 'b': 5})
 
 
-class PiiTests(SimpleTestCase):
-    KEY = base64.b64encode(b'k' * 32).decode()
-    USER_ID = '0123456789abcdef0123456789abcdef'
+class RpcReplyTests(SimpleTestCase):
+    def test_revives_datetimes_and_dates_but_not_keys(self):
+        raw = json.dumps({'status': 'success', 'data': {
+            'created_at': '2026-10-01T09:30:00', 'start_date': '2026-01-31',
+            'daily': {'2026-10-01': 3}, 'name': 'Acme',
+        }})
+        data = json.loads(raw, object_hook=rpc._revive)['data']
+        self.assertEqual(data['created_at'], datetime(2026, 10, 1, 9, 30, tzinfo=timezone.utc))
+        self.assertEqual(data['start_date'], date(2026, 1, 31))
+        self.assertEqual(data['daily'], {'2026-10-01': 3})
+        self.assertEqual(data['name'], 'Acme')
 
-    def encrypt(self, text, salt='salt-value', iv='iv-value-not-12-bytes'):
-        hkdf = HKDF(algorithm=hashes.SHA256(), length=32, salt=salt.encode(), info=str(uuid.UUID(self.USER_ID)).encode())
-        key = hkdf.derive(base64.b64decode(self.KEY))
-        return base64.b64encode(AESGCM(key).encrypt(hashlib.sha256(iv.encode()).digest()[:12], text.encode(), None)).decode()
+    def test_error_reply_raises(self):
+        with mock.patch.object(rpc, '_call', return_value=b'{"status": "error", "message": "boom"}'):
+            with self.assertRaisesMessage(rpc.ServiceUnavailable, 'identity.tiers: boom'):
+                rpc.query('identity', 'tiers')
 
-    def user(self):
-        return User(id=self.USER_ID, salt='salt-value', iv='iv-value-not-12-bytes',
-                    name_ciphertext=self.encrypt('Ada'), email_ciphertext=self.encrypt('ada@example.com'))
-
-    def test_decrypts_with_key(self):
-        with self.settings(MASTER_SECRET_KEY=self.KEY):
-            self.assertEqual(reveal(self.user()), {'name': 'Ada', 'email': 'ada@example.com', 'decrypted': True})
-
-    def test_without_or_with_wrong_key_falls_back(self):
-        hidden = {'name': None, 'email': None, 'decrypted': False}
-        with self.settings(MASTER_SECRET_KEY=''):
-            self.assertEqual(reveal(self.user()), hidden)
-        with self.settings(MASTER_SECRET_KEY=base64.b64encode(b'x' * 32).decode()):
-            self.assertEqual(reveal(self.user()), hidden)
+    def test_success_reply_returns_data(self):
+        with mock.patch.object(rpc, '_call', return_value=b'{"status": "success", "data": [1]}') as call:
+            self.assertEqual(rpc.query('planning', 'summary', since=datetime(2026, 1, 1, tzinfo=timezone.utc)), [1])
+        sent = json.loads(call.call_args.args[1])
+        self.assertEqual(sent, {'query': 'summary', 'params': {'since': '2026-01-01T00:00:00Z'}})

@@ -3,11 +3,10 @@
 import logging
 from datetime import datetime, time, timedelta
 
-from django.db import DatabaseError
-from django.db.models import Count
-from django.db.models.functions import TruncDate
 from django.shortcuts import render
 from django.utils import timezone
+
+from . import rpc
 
 logger = logging.getLogger(__name__)
 
@@ -23,23 +22,23 @@ WINDOWS = (30, 90, 365)
 
 
 class Sources:
-    """Tracks which service databases failed during one request.
+    """Runs admin queries for one request and tracks which services failed.
 
     The admin site must stay useful while parts of the product are down, so a
-    failed source returns `default` and the page shows a banner instead of a 500.
-    `fn` must evaluate its querysets (list/dict/aggregate), not return lazy ones.
+    failed service returns `default` and the page shows a banner instead of a 500.
+    After one failure the service is skipped for the rest of the request.
     """
 
     def __init__(self):
         self.down = []
 
-    def fetch(self, service, fn, default=None):
+    def query(self, service, name, default=None, **params):
         if service in self.down:
             return default
         try:
-            return fn()
-        except DatabaseError:
-            logger.exception('%s database unavailable', service)
+            return rpc.query(service, name, **params)
+        except rpc.ServiceUnavailable as e:
+            logger.warning('admin query %s.%s failed: %s', service, name, e)
             self.down.append(service)
             return default
 
@@ -80,18 +79,18 @@ def labels(days):
     return [d.strftime('%d %b') for d in day_range(days)]
 
 
-def daily(qs, days, agg=None, field='created_at'):
-    """One value per day for the last `days` days, oldest first, zero-filled."""
-    dates = day_range(days)
-    rows = (
-        qs.filter(**{f'{field}__gte': start_of(dates[0])})
-        .annotate(day=TruncDate(field))
-        .values('day')
-        .annotate(v=agg or Count('id'))
-        .order_by()
-    )
-    by_day = {r['day']: r['v'] or 0 for r in rows}
-    return [by_day.get(d, 0) for d in dates]
+def series(by_day, days):
+    """A service's daily map {'YYYY-MM-DD': value} as one value per day, oldest first, zero-filled."""
+    by_day = by_day or {}
+    return [by_day.get(d.isoformat()) or 0 for d in day_range(days)]
+
+
+def fill(d, days, *keys):
+    """Turn the daily maps under `keys` of a query result into series, in place. None passes through."""
+    if d:
+        for key in keys:
+            d[key] = series(d[key], days)
+    return d
 
 
 def cumulative(start, values):
@@ -100,11 +99,6 @@ def cumulative(start, values):
         total += v
         out.append(total)
     return out
-
-
-def count_by(qs, field, agg=None):
-    """{field value: aggregate} for a queryset, default aggregate = row count."""
-    return dict(qs.values(field).annotate(v=agg or Count('id')).order_by().values_list(field, 'v'))
 
 
 def pct(used, limit):

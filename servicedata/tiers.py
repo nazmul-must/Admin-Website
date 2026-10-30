@@ -1,23 +1,24 @@
-"""Tier limits from Identity-Backend's tier.config.json.
+"""Tier limits, served by Identity's `tiers` admin query (its tier.config.json).
 
-ponytail: read from Identity's repo file locally; serve it from Identity's
-admin API once that exists, so the deployed admin site needs no repo checkout.
+ponytail: cached for the life of the process once fetched; a tier.config.json change
+needs an admin site restart. Add a TTL if tiers start changing without deploys.
 """
 
-import json
-from functools import lru_cache
-
-from django.conf import settings
+from . import rpc
 
 CREDITS_PER_USD = 100  # 1 AI credit = $0.01 (see tier.config.json)
 
+_cache = {}
 
-@lru_cache
+
 def tiers():
-    try:
-        return json.loads(settings.TIER_CONFIG_PATH.read_text())['tiers']
-    except (OSError, ValueError, KeyError):
-        return {}
+    """{tier key: config}; {} while Identity is unreachable (not cached, so it retries)."""
+    if 'tiers' not in _cache:
+        try:
+            _cache['tiers'] = rpc.query('identity', 'tiers') or {}
+        except rpc.ServiceUnavailable:
+            return {}
+    return _cache['tiers']
 
 
 def tier_name(tier):
@@ -30,13 +31,13 @@ def limits(sub):
     """Effective limits for a subscription; None means unlimited. Per-org overrides win."""
     if sub is None:
         return {'programmes': None, 'users': None, 'ai_usd': None}
-    tier = tiers().get(sub.tier.lower(), {})
+    tier = tiers().get(sub['tier'].lower(), {})
 
     def pick(override, key):
         return override if override is not None else tier.get(key)
 
     return {
-        'programmes': pick(sub.programme_limit_override, 'programme_limit'),
-        'users': pick(sub.user_limit_override, 'user_limit'),
-        'ai_usd': pick(sub.ai_credit_allowance_override_usd, 'ai_credit_allowance_usd'),
+        'programmes': pick(sub['programme_limit_override'], 'programme_limit'),
+        'users': pick(sub['user_limit_override'], 'user_limit'),
+        'ai_usd': pick(sub['ai_credit_allowance_override_usd'], 'ai_credit_allowance_usd'),
     }

@@ -88,38 +88,13 @@ DATABASES = {
     },
 }
 
-# Service Oracle PDBs, read-only (see admin/db_router.py). Alias -> PDB service name.
-# ponytail: direct DB reads are a stepping stone; replace each with the owning
-# service's internal admin API once admin -> service auth is designed.
-SERVICE_DATABASES = {
-    'identity': 'IDENTITY',
-    'agent': 'AGENT',
-    'authorization': 'AUTHORIZATION',
-    'document': 'DOCUMENT',
-    'planning': 'PLANNING',
-    'notification': 'NOTIFICATION',
-}
-for _alias, _pdb in SERVICE_DATABASES.items():
-    DATABASES[_alias] = {
-        'ENGINE': 'django.db.backends.oracle',
-        'NAME': f"{os.environ.get('ORACLE_HOST', 'localhost:1521')}/{_pdb}",
-        'USER': os.environ.get('ORACLE_USER', 'app_user'),
-        'PASSWORD': os.environ.get('ORACLE_PASSWORD', ''),
-        # Fail fast when a service DB is down; pages render the rest.
-        'OPTIONS': {'tcp_connect_timeout': 3},
-    }
-
-DATABASE_ROUTERS = ['admin.db_router.ServiceDatabaseRouter']
-
-# Tier -> limits matrix owned by Identity-Backend.
-TIER_CONFIG_PATH = Path(os.environ.get(
-    'TIER_CONFIG_PATH',
-    BASE_DIR.parent / 'Identity-Backend' / 'app' / 'initialize_app' / 'tier.config.json',
-))
-
-# Identity's master PII key. Optional: when set, user names/emails are decrypted
-# (servicedata/pii.py); when empty, pages show ciphertext.
-MASTER_SECRET_KEY = os.environ.get('MASTER_SECRET_KEY', '')
+# Service data comes from each service's admin read queries over RabbitMQ RPC
+# (servicedata/rpc.py), never from service databases. RABBITMQ_SUFFIX must match the
+# services' RABBITMQ_SUFFIX: pro3ai_generic appends it to every routing key.
+RABBITMQ_URL = os.environ.get('RABBITMQ_URL', 'amqp://guest:guest@localhost:5672/')
+RABBITMQ_SUFFIX = os.environ.get('RABBITMQ_SUFFIX', '')
+# Seconds to wait for one service's reply before showing it as down.
+ADMIN_RPC_TIMEOUT = float(os.environ.get('ADMIN_RPC_TIMEOUT', '8'))
 
 # Roles (Super Admin, Manager, Monitor) live in accounts/models.py. Role members are not
 # Django staff, so everyone signs in through Django's own LoginView.

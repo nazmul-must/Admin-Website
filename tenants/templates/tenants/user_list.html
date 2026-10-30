@@ -4,13 +4,12 @@
   <div class="mb-6 flex flex-wrap items-end justify-between gap-4 pb-4">
     <div>
       <h1 class="page-title">Users</h1>
-      {% if not pii_enabled %}<p class="text-sm text-amber-700">MASTER_SECRET_KEY not set: names and emails shown encrypted; search by ID only.</p>{% endif %}
     </div>
     <form class="flex flex-wrap gap-2" hx-get="{% url 'user-list' %}" hx-target="#user-table"
           hx-trigger="input changed delay:300ms from:input, change from:select" hx-push-url="true">
       <div class="relative">
         <i data-lucide="search" class="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"></i>
-        <input type="search" name="q" value="{{ q }}" placeholder="{% if pii_enabled %}Name, email or ID{% else %}User ID{% endif %}"
+        <input type="search" name="q" value="{{ q }}" placeholder="Name, email or ID"
                class="input w-72 pl-10">
       </div>
       <select name="org" class="input max-w-48">
