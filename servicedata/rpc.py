@@ -113,7 +113,7 @@ def query(service, name, **params):
         try:
             raw = _call(service, body)
             break
-        except pika.exceptions.AMQPError as e:
+        except (pika.exceptions.AMQPError, OSError) as e:  # OSError: DNS failure, socket errors
             _reset()
             if attempt == 2:
                 raise ServiceUnavailable(f'{service}: broker unavailable ({e!r})') from e
