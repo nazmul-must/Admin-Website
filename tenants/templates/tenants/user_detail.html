@@ -23,7 +23,7 @@
         {% if account.email_verified %}<span class="badge bg-secondary text-secondary-foreground">email verified</span>{% else %}<span class="badge border-amber-200 bg-amber-50 text-amber-700">email not verified</span>{% endif %}
         {% if account.mfa_method %}<span class="badge bg-secondary text-secondary-foreground">MFA: {{ account.mfa_method }}</span>{% else %}<span class="badge bg-muted text-muted-foreground">MFA off</span>{% endif %}
         {% if account.deleted_at %}<span class="badge border-red-200 bg-red-50 text-destructive">deleted {{ account.deleted_at|date:"Y-m-d" }}</span>{% endif %}
-        <span class="text-muted-foreground">signed up {{ account.created_at|date:"Y-m-d" }} ({{ account.created_at|timesince }} ago) · updated {{ account.updated_at|date:"Y-m-d" }}</span>
+        <span class="text-muted-foreground">signed up {{ account.created_at|date:"Y-m-d" }} ({{ account.created_at|timesince }} ago)</span>
       </div>
       <div class="mt-1 font-mono text-xs text-muted-foreground">{{ account.id }}</div>
     </div>

@@ -118,7 +118,15 @@ Behaviour worth knowing:
 - **A failed service does not break a page.** If a service does not reply within
   `ADMIN_RPC_TIMEOUT` seconds (default 8), or has no consumer bound, the page shows a banner
   naming it and renders everything else (`servicedata/stats.py`, `Sources`).
+- **Replies are checked.** Every reply is validated against its contract in
+  `servicedata/contracts.py` before a page reads it. A service whose reply has changed shape
+  is shown in the same banner as a down service, never as a 500. Only fields declared as
+  dates are parsed as dates.
 - **Read-only.** The admin site only sends read queries; it has no database connection to any service.
+- **Access log.** Every request a signed-in employee makes is recorded (`AccessLog`), with
+  the full path, so searches are recorded too.
+- **Health.** `/health/` answers 200 while the site's own database does, without sign-in.
+  It does not check the product services: the site must stay up when they are down.
 - **PII.** Identity returns names and emails decrypted. A user whose fields Identity cannot
   decrypt is shown by id.
 
@@ -128,8 +136,8 @@ Behaviour worth knowing:
 |---|---|
 | Shared RabbitMQ user for the admin site and the services | Admin-only RabbitMQ user with sole write permission on the `admin` exchange |
 | Admin RPC calls on one page run one after another | Publish them together and collect replies by correlation id |
-| SQLite for Django's own tables | Managed PostgreSQL |
-| Django's built-in username/password login (`/login/`) | Operator SSO + MFA |
+| SQLite for Django's own tables | Managed PostgreSQL (set `DB_*` in the environment and add `psycopg`) |
+| Django's built-in username/password login (`/login/`), throttled per email in the per-process cache | Operator SSO + MFA |
 | Tailwind, HTMX and Chart.js loaded from a CDN | Tailwind standalone CLI build and vendored JS |
 | Identity returns every user and the search runs in the admin site | Search and paging inside Identity's `user_list` query |
 | No pagination on lists | Paginated lists |
@@ -167,13 +175,16 @@ Requires the local product stack running (RabbitMQ on host port `5673`, and the 
 answer the admin queries) and the `mtr-env` conda Python.
 
 ```bash
-cp .env.example .env          # set RABBITMQ_URL (services' user/password) and RABBITMQ_SUFFIX (services' value)
-pip install -r requirements.txt
-python manage.py migrate      # Django's own tables only, in db.sqlite3
+cp .env.example .env          # set DJANGO_SECRET_KEY, RABBITMQ_URL (services' user/password) and RABBITMQ_SUFFIX
+pip install -r requirements-dev.txt   # app + quality tools; pre-commit install
+make migrate                  # Django's own tables only, in db.sqlite3
 python manage.py create_super_admin   # asks for your email and password; no verification
-python manage.py runserver    # http://127.0.0.1:8000/, sign in with that email
-python manage.py test
+make run                      # http://127.0.0.1:8000/, sign in with that email
+make test                     # or: make coverage
+make fix && make check        # format, then the lint gate (also run by pre-commit and CI)
 ```
+
+Coding rules for this repo are in [CONVENTIONS.md](CONVENTIONS.md).
 
 ## Employees and roles
 
@@ -206,13 +217,15 @@ write or download actions with `@edit_required` (`accounts/decorators.py`); in t
 
 | Path | Contents |
 |---|---|
-| `admin/` | Settings, URLs, nav and role context processors |
-| `accounts/` | Employees (admin-site accounts) and their roles: permissions, Employee admin, the migration that creates the role groups, view decorators, tests |
-| `servicedata/` | RabbitMQ RPC client for the services' admin queries (`rpc.py`), query helpers (`stats.py`), tier limits, template filters, tests |
-| `tenants/` | Organization and user list/detail pages |
-| `analytics/` | Overview and analytics pages, Chart.js config builder |
+| `admin/` | Settings (all from the environment), URLs, `/health/`, JSON log format, nav and role context processors, Chart.js config builder (`charts.py`) |
+| `accounts/` | Employees (admin-site accounts) and their roles: permissions, the migration that creates the role groups, view decorators, sign-in throttling, the access log and its middleware, tests |
+| `servicedata/` | RabbitMQ RPC client (`rpc.py`), reply contracts (`contracts.py`), per-request service access and date series (`stats.py`), subscriptions and tier limits (`tiers.py`), template filters, fake replies for tests |
+| `tenants/` | Organization and user list/detail pages: views, and selectors that combine the services' data |
+| `analytics/` | Overview and analytics pages: views (charts), and selectors that combine the services' data |
 | `templates/` | Base layout, theme, login, 403 page and shared partials (KPI card, chart, window picker, user cell) |
 | `static/js/charts.js` | Renders server-built Chart.js configs, also after HTMX swaps |
 
 To show new service data, add a query to the owning service's `admin_query` feature (SQL in
-that service's repository) and call it with `src.query(service, name, default, **params)`.
+that service's repository), add its reply contract to `servicedata/contracts.py` and a fake
+reply to `servicedata/fake_replies.py`, and call it from a selector with
+`src.query(service, name, default, **params)`.

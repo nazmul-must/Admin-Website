@@ -1,0 +1,42 @@
+# Ruff configuration: the single source of truth for formatting AND linting. The editor,
+# `make fix` / `make check`, pre-commit, CI and any AI agent all read THIS file.
+# Same line length, rule selection and format as the backend services' app/ruff.toml, plus
+# Django's own rules (DJ). Exceptions below each state why.
+
+line-length = 100
+target-version = "py313"
+extend-exclude = ["*/migrations/*", "**/__pycache__"]
+
+[lint]
+# Same set as the services (see Authorization-Backend/app/ruff.toml for what each means),
+# plus DJ (flake8-django: model __str__, ModelForm fields, null on string fields, ...).
+select = [
+    "E", "F", "I", "B", "ASYNC", "C4", "PIE", "RUF",
+    "SIM", "TRY", "ARG", "PERF", "PTH", "A", "ERA", "DTZ",
+    "PLR1714", "PLR2004", "PLW1641",
+    "DJ",
+]
+# Same ignores as the services, with the same reasons:
+ignore = [
+    "E501",     # line length is the formatter's job; leftovers are unsplittable strings/comments
+    "RUF001",   # ambiguous unicode in strings: fires on legitimate typography (em-dash, etc.)
+    "RUF002",   # ambiguous unicode in docstrings: same
+    "RUF003",   # ambiguous unicode in comments: same
+    "TRY003",   # would force a custom exception class for every raise-with-message
+    "TRY301",   # "abstract raise to inner function" hurts readability for simple raises
+    # Django only: declarative class attributes (Meta options, form `error_messages`) are
+    # framework-owned and read by name; annotating them ClassVar adds nothing.
+    "RUF012",
+]
+
+[lint.per-file-ignores]
+# Tests assert against literal expected values (status codes, counts).
+"**/tests.py" = ["PLR2004", "F841"]
+
+[lint.isort]
+known-first-party = ["accounts", "admin", "analytics", "servicedata", "tenants"]
+
+[format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "lf"

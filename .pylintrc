@@ -1,0 +1,18 @@
+# Same gate as the backend services: pylint is used only for what ruff can't do.
+[MAIN]
+ignore = migrations
+ignore-paths = ^.*/__pycache__/.*$
+disable = all
+enable =
+    too-many-lines,      # C0302 — enforces the 500-line file cap below
+    duplicate-code       # R0801 — flags copy-pasted blocks (extract a helper)
+
+[FORMAT]
+max-module-lines = 500
+
+[SIMILARITIES]
+min-similarity-lines = 8
+ignore-comments = yes
+ignore-docstrings = yes
+ignore-imports = yes
+ignore-signatures = yes

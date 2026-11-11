@@ -1,0 +1,37 @@
+# Enforces the layering in CONVENTIONS.md: views -> selectors -> servicedata (rpc, contracts).
+# Run with `lint-imports --config .importlinter` from the repo root (`make check` does).
+[importlinter]
+root_packages=
+    accounts
+    admin
+    analytics
+    servicedata
+    tenants
+
+[importlinter:contract:1]
+name=servicedata is the bottom layer: it never imports the apps or the project package
+type=forbidden
+source_modules=
+    servicedata
+forbidden_modules=
+    accounts
+    admin
+    analytics
+    tenants
+
+[importlinter:contract:2]
+name=feature apps are independent of each other
+type=independence
+modules=
+    tenants
+    analytics
+
+[importlinter:contract:3]
+name=accounts (employees and roles) does not depend on the data pages
+type=forbidden
+source_modules=
+    accounts
+forbidden_modules=
+    analytics
+    servicedata
+    tenants

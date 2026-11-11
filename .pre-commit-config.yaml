@@ -1,0 +1,22 @@
+# Runs on `git commit` against staged files. Install once with:
+#   pip install -r requirements-dev.txt && pre-commit install
+# Same configs as `make check`, the editor and CI (ruff.toml, .pylintrc).
+
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.14.7
+    hooks:
+      - id: ruff-format
+        exclude: /migrations/
+      - id: ruff
+        args: [--fix]
+        exclude: /migrations/
+
+  - repo: local
+    hooks:
+      - id: pylint
+        name: pylint (500-line cap + duplicate code)
+        entry: pylint
+        language: system
+        types: [python]
+        exclude: /migrations/

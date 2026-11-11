@@ -2,5 +2,5 @@ from django.apps import AppConfig
 
 
 class AccountsConfig(AppConfig):
-    name = 'accounts'
-    verbose_name = 'Admin site'
+    name = "accounts"
+    verbose_name = "Admin site"

@@ -1,0 +1,13 @@
+# Development & CI tooling only; never installed in the production image.
+# Install with:  pip install -r requirements-dev.txt  (then: pre-commit install)
+# Same pins as the services' requirements-dev.txt.
+-r requirements.txt
+ruff==0.14.7          # lint + format (ruff.toml)
+pylint==3.3.7         # 500-line file cap + duplicate-code detection (.pylintrc)
+radon==6.0.1          # complexity metrics (xenon's engine)
+xenon==0.9.3          # complexity gate in `make check`
+import-linter==2.13   # layer boundaries (.importlinter)
+pyright==1.1.390      # type checking, `make type-check`
+pre-commit==4.0.1     # runs ruff + pylint on staged files
+coverage==7.10.7      # `make coverage`
+django-stubs==6.1.2    # Django types for pyright
